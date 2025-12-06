@@ -3,9 +3,11 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 from dotenv import load_dotenv
 from sqlalchemy import text
+from flask_login import LoginManager
 
 # Inicializace databáze 
 db = SQLAlchemy()
+login_manager = LoginManager()
 
 def create_app():
     # Načtení proměnných z .env
@@ -24,9 +26,19 @@ def create_app():
     
     # Propojení databáze s aplikací
     db.init_app(app)
-    
-    #Později dodám blueprinty
 
+    login_manager.init_app(app)
+    login_manager.login_view = 'auth.login'
+
+    from app.models import StaffMember
+    @login_manager.user_loader
+    def load_user(user_id):
+        return StaffMember.query.get(int(user_id))
+    
+
+    #Později dodám blueprinty
+    from app.blueprints.auth import auth_bp
+    app.register_blueprint(auth_bp)
     
     @app.route('/')
     
