@@ -35,9 +35,11 @@ CREATE TABLE IF NOT EXISTS roles (
     role_name VARCHAR(30) NOT NULL 
 );
 
+-- TADY JSEM PŘIDAL TEN SLOUPEC
 CREATE TABLE IF NOT EXISTS staff_member (
     staff_id SERIAL PRIMARY KEY,
     email VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255),
     role_id INT NOT NULL REFERENCES roles(role_id),
     hire_date DATE NOT NULL
 );
