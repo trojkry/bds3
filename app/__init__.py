@@ -9,6 +9,7 @@ from logging.handlers import TimedRotatingFileHandler
 from flask import Flask, render_template
 
 
+
 db = SQLAlchemy()
 login_manager = LoginManager()
 
@@ -29,16 +30,15 @@ def create_app():
     if not os.path.exists('logs'):
         os.mkdir('logs')
         
-    # Rotace logů každý den o půlnoci
+    # Logy o půlnoci (snad)
     file_handler = TimedRotatingFileHandler('logs/bds_app.log', when='midnight', interval=1, backupCount=30)
     file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'))
     file_handler.setLevel(logging.INFO)
     
     app.logger.addHandler(file_handler)
     app.logger.setLevel(logging.INFO)
-    app.logger.info('Aplikace BDS startuje...')
 
-    # Propojení databáze s aplikací
+
     db.init_app(app)
 
     login_manager.init_app(app)
@@ -53,6 +53,9 @@ def create_app():
     # Blueprinty
     from app.blueprints.auth import auth_bp
     app.register_blueprint(auth_bp)
+
+    from app.blueprints.main import main_bp 
+    app.register_blueprint(main_bp)
     
 
     
@@ -65,7 +68,6 @@ def create_app():
         except Exception as e:
             db_version = f"Chyba: {e}"
             
-        # TADY je ta změna - místo stringu vracíme šablonu
         return render_template('index.html', db_version=db_version)
 
     return app
