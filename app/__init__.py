@@ -2,6 +2,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 import os
 from dotenv import load_dotenv
+from sqlalchemy import text
 
 # Inicializace databáze 
 db = SQLAlchemy()
@@ -28,7 +29,12 @@ def create_app():
 
     
     @app.route('/')
-    def index():
-        return "<h1>Asi to funguje</h1><p>Mám dost.</p>"
     
+    def index():
+        try:
+            result = db.session.execute(text("SELECT version()")).fetchone()
+            db_version = result[0]
+            return f"<h1>Asi to funguje</h1><p>Mám dost.</p><p><strong>Verze PostgreSQL:</strong> {db_version}</p>"
+        except Exception as e:
+            return f"<h1>Chyba připojení k databázi</h1><p>{e}</p>"
     return app
