@@ -27,11 +27,16 @@ def create_app():
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 
+    basedir = os.path.abspath(os.path.dirname(__file__))
+    app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'static/uploads/products') 
+    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MB limit
+
+
     if not os.path.exists('logs'):
         os.mkdir('logs')
         
     # Logy o půlnoci (snad)
-    file_handler = TimedRotatingFileHandler('logs/bds_app.log', when='midnight', interval=1, backupCount=30)
+    file_handler = TimedRotatingFileHandler('logs/bds.log', when='midnight', interval=1, backupCount=30)
     file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'))
     file_handler.setLevel(logging.INFO)
     
@@ -54,10 +59,11 @@ def create_app():
     from app.blueprints.auth import auth_bp
     app.register_blueprint(auth_bp)
 
-    from app.blueprints.main import main_bp 
-    app.register_blueprint(main_bp)
+    from app.blueprints.products import products_bp
+    app.register_blueprint(products_bp)
     
-
+    from app.blueprints.orders import orders_bp
+    app.register_blueprint(orders_bp)
     
     @app.route('/')
     def index():

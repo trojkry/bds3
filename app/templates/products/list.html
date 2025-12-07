@@ -7,8 +7,7 @@
 
 <form method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-auto">
-        <label for="search" class="visually-hidden">Hledat</label>
-        <input type="text" name="search" id="search" class="form-control" placeholder="Hledat podle názvu/popisu" value="{{ search_term if search_term }}">
+        <input type="text" name="search" class="form-control" placeholder="Hledat..." value="{{ search_term if search_term }}">
     </div>
     <div class="col-auto">
         <select name="category_id" class="form-select">
@@ -20,16 +19,18 @@
     </div>
     <div class="col-auto">
         <button type="submit" class="btn btn-primary">Filtrovat</button>
-        <a href="{{ url_for('main.products_list') }}" class="btn btn-secondary">Zrušit filtr</a>
+        <a href="{{ url_for('products.products_list') }}" class="btn btn-secondary">Zrušit</a>
     </div>
 </form>
 
-<a href="{{ url_for('main.product_add') }}" class="btn btn-success mb-3">Přidat nový produkt (CRUD Create)</a>
+<a href="{{ url_for('products.product_add') }}" class="btn btn-success mb-3 modal-trigger" data-title="Přidat nový produkt">
+    Přidat nový produkt
+</a>
 
-<table class="table table-striped table-hover">
+<table class="table table-striped table-hover align-middle">
     <thead>
         <tr>
-            <th>ID</th>
+            <th>#</th> <th>ID</th>
             <th>Název</th>
             <th>Kategorie</th>
             <th>Cena</th>
@@ -39,25 +40,87 @@
     <tbody>
         {% for product in products %}
         <tr>
-            <td>{{ product.product_id }}</td>
-            <td><a href="{{ url_for('main.product_detail', product_id=product.product_id) }}">{{ product.name }}</a></td>
-            <td>{{ product.category.name if product.category else 'Neznámá' }}</td> 
-            <td>{{ product.base_price }}</td>
             <td>
-                <a href="{{ url_for('main.product_edit', product_id=product.product_id) }}" class="btn btn-sm btn-info">Upravit</a> 
+                <img src="{{ product.primary_image_url }}" alt="Img" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;">
+            </td>
+            <td>{{ product.product_id }}</td>
+            <td>
+                <a href="{{ url_for('products.product_detail', product_id=product.product_id) }}" 
+                   class="fw-bold text-decoration-none modal-trigger" 
+                   data-title="Detail produktu #{{ product.product_id }}">
+                    {{ product.name }}
+                </a>
+            </td>
+            <td>{{ product.category.name if product.category else 'Neznámá' }}</td> 
+            <td>{{ product.base_price }} Kč</td>
+            <td>
+                <a href="{{ url_for('products.product_edit', product_id=product.product_id) }}" 
+                   class="btn btn-sm btn-info modal-trigger"
+                   data-title="Upravit produkt: {{ product.name }}">
+                   Upravit
+                </a> 
                 
-                <form method="POST" action="{{ url_for('main.product_delete', product_id=product.product_id) }}" style="display:inline;" 
+                <form method="POST" action="{{ url_for('products.product_delete', product_id=product.product_id) }}" style="display:inline;" 
                       onsubmit="return confirm('Opravdu chcete smazat produkt {{ product.name }}?');">
                     <button type="submit" class="btn btn-sm btn-danger">Smazat</button> 
                 </form>
             </td>
         </tr>
         {% else %}
-        <tr>
-            <td colspan="5">Nebyly nalezeny žádné produkty.</td>
-        </tr>
+        <tr><td colspan="6">Žádné produkty.</td></tr>
         {% endfor %}
     </tbody>
 </table>
 
+<div class="modal fade" id="universalModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Načítám...</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="universalModalBody">
+                <div class="text-center my-5"><div class="spinner-border text-primary"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script> 
+<script>
+$(document).ready(function() {
+    $('.modal-trigger').on('click', function(e) {
+        if (e.which !== 1 && e.which !== 0) return;
+        if (e.ctrlKey || e.metaKey) return;
+
+        e.preventDefault();
+        
+        var url = $(this).attr('href');
+        var title = $(this).data('title') || 'Informace';
+        
+        var modal = $('#universalModal');
+        var modalBody = $('#universalModalBody');
+        
+        modal.find('.modal-title').text(title);
+        modalBody.html('<div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>');
+        
+        $.ajax({
+            url: url,
+            type: 'GET',
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            success: function(response) {
+                modalBody.html(response);
+            },
+            error: function() {
+                modalBody.html('<div class="alert alert-danger">Chyba při načítání dat.</div>');
+            }
+        });
+        
+        modal.modal('show');
+    });
+});
+</script>
 {% endblock %}

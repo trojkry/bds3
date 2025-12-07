@@ -1,0 +1,57 @@
+<form method="POST" enctype="multipart/form-data" 
+      action="{{ url_for('products.product_edit', product_id=product.product_id) if product else url_for('products.product_add') }}">
+    
+    <div class="mb-3">
+        <label for="name" class="form-label">Název produktu (*):</label>
+        <input type="text" class="form-control" id="name" name="name" required 
+               value="{{ product.name if product else form_data.name if form_data }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="base_price" class="form-label">Základní cena (*):</label>
+        <input type="number" step="0.01" min="0" class="form-control" id="base_price" name="base_price" required 
+               value="{{ product.base_price if product else form_data.base_price if form_data }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="category_id" class="form-label">Kategorie (*):</label>
+        <select class="form-select" id="category_id" name="category_id" required>
+            <option value="">Vyberte kategorii</option>
+            {% set selected_category = product.category_id if product else form_data.category_id|int if form_data else none %}
+            {% for category in categories %}
+                <option value="{{ category.category_id }}" {% if selected_category and category.category_id == selected_category %}selected{% endif %}>
+                    {{ category.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="description" class="form-label">Popis:</label>
+        <textarea class="form-control" id="description" name="description" rows="3">{{ product.description if product else form_data.description if form_data }}</textarea>
+    </div>
+    
+    <div class="mb-3">
+        <label for="product_image" class="form-label">Obrázek:</label>
+        <input type="file" class="form-control" id="product_image" name="product_image" accept=".png, .jpg, .jpeg, .gif">
+        
+        {% if product and product.primary_image_url and product.primary_image_url != '/static/images/default.png' %}
+            <div class="mt-2">
+                <small class="text-muted">Aktuální:</small><br>
+                <img src="{{ product.primary_image_url }}" alt="Aktuální" class="img-thumbnail" style="max-height: 80px;">
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="text-end border-top pt-3">
+        {% if request.headers.get('X-Requested-With') == 'XMLHttpRequest' %}
+            <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Zrušit</button>
+        {% else %}
+            <a href="{{ url_for('products.products_list') }}" class="btn btn-danger me-2">Zrušit</a>
+        {% endif %}
+        
+        <button type="submit" class="btn btn-primary">
+            {% if product %}Uložit změny{% else %}Přidat produkt{% endif %}
+        </button>
+    </div>
+</form>

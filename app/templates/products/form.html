@@ -1,58 +1,20 @@
 {% extends "base.html" %}
 
 {% block title %}
-    {% if product %}Upravit produkt: {{ product.name }}{% else %}Přidat nový produkt{% endif %}
+    {% if product %}Upravit produkt{% else %}Přidat nový produkt{% endif %}
 {% endblock %}
 
 {% block content %}
-<a href="{{ url_for('main.products_list') }}" class="btn btn-secondary mb-3">Zpět na seznam produktů</a>
+<div class="container">
+    <a href="{{ url_for('products.products_list') }}" class="btn btn-secondary mb-3">Zpět na seznam</a>
 
-<h2 class="mb-4">
-    {% if product %}Upravit produkt: {{ product.name }} (CRUD Update){% else %}Přidat nový produkt (CRUD Create){% endif %}
-</h2>
+    <h2 class="mb-4">
+        {% if product %}Upravit produkt (Full Page){% else %}Přidat nový produkt{% endif %}
+    </h2>
 
-<div class="row">
-    <div class="col-md-8">
-        <div class="card shadow">
-            <div class="card-body">
-                <form method="POST">
-                    
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Název produktu (*):</label>
-                        <input type="text" class="form-control" id="name" name="name" required 
-                               value="{{ product.name if product else form_data.name if form_data }}">
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="base_price" class="form-label">Základní cena (*):</label>
-                        <input type="number" step="0.01" min="0" class="form-control" id="base_price" name="base_price" required 
-                               value="{{ product.base_price if product else form_data.base_price if form_data }}">
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="category_id" class="form-label">Kategorie (*):</label>
-                        <select class="form-select" id="category_id" name="category_id" required>
-                            <option value="">Vyberte kategorii</option>
-                            {% set selected_category = product.category_id if product else form_data.category_id|int if form_data else none %}
-                            {% for category in categories %}
-                                <option value="{{ category.category_id }}" {% if selected_category and category.category_id == selected_category %}selected{% endif %}>
-                                    {{ category.name }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Popis:</label>
-                        <textarea class="form-control" id="description" name="description" rows="4">{{ product.description if product else form_data.description if form_data }}</textarea>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary">
-                        {% if product %}Uložit změny{% else %}Přidat produkt{% endif %}
-                    </button>
-                    <a href="{{ url_for('main.products_list') }}" class="btn btn-danger">Zrušit</a>
-                </form>
-            </div>
+    <div class="card shadow">
+        <div class="card-body">
+            {% include "products/form_fragment.html" %}
         </div>
     </div>
 </div>

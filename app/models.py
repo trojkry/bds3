@@ -1,8 +1,9 @@
 from app import db
 from flask_login import UserMixin
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, column_property
+from sqlalchemy import func
 
-# ---------------------- UŽIVATELÉ A ROLE ----------------------
+# ---------------------- UŽIVATELÉ, ROLE A ZÁKAZNÍCI ----------------------
 
 class Role(db.Model):
     __tablename__ = 'roles'
@@ -29,16 +30,48 @@ class StaffMember(UserMixin, db.Model):
     def get_id(self):
         return str(self.staff_id)
 
+class UserAccount(db.Model):
+    __tablename__ = 'user_account'
+    __table_args__ = {'schema': 'bds'}
+
+    user_id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
 class CustomerProfile(db.Model):
     __tablename__ = 'customer_profile'
     __table_args__ = {'schema': 'bds'}
 
     customer_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('bds.user_account.user_id'))
     first_name = db.Column(db.String(100), nullable=False)
     last_name = db.Column(db.String(100), nullable=False)
     date_of_birth = db.Column(db.Date)
     
+    # Sloupec pro šifrovaná data
+    phone_number_enc = db.Column(db.LargeBinary)
+    # Dekryptovaný telefonní číslo
+    phone_decrypted = column_property(
+        func.pgp_sym_decrypt(phone_number_enc, 'key', type_=db.String)
+    )
+    
+    # Relace
+    user = relationship('UserAccount', backref='profile')
     orders = relationship('Order', backref='customer', lazy=True)
+    addresses = relationship('Address', backref='customer', lazy=True)
+
+class Address(db.Model):
+    __tablename__ = 'address'
+    __table_args__ = {'schema': 'bds'}
+
+    address_id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('bds.customer_profile.customer_id'))
+    street = db.Column(db.String(255), nullable=False)
+    city = db.Column(db.String(100), nullable=False)
+    zip_code = db.Column(db.String(20), nullable=False)
+    is_billing = db.Column(db.Boolean, default=False)
 
 # ---------------------- PRODUKTY A KATEGORIE ----------------------
 
@@ -65,6 +98,13 @@ class Product(db.Model):
     is_featured = db.Column(db.Boolean, default=False)
     
     variants = relationship('ProductVariant', backref='product', lazy=True, cascade="all, delete-orphan")
+    images = relationship('ProductImage', order_by="ProductImage.sort_order", backref='product', lazy=True, cascade="all, delete-orphan")
+
+    @property
+    def primary_image_url(self):
+        if self.images:
+            return self.images[0].url
+        return '/static/images/default.png'
 
 class ProductVariant(db.Model):
     __tablename__ = 'product_variant'
@@ -75,6 +115,15 @@ class ProductVariant(db.Model):
     sku = db.Column(db.String(50), nullable=False)
     attribute_value = db.Column(db.String(100), nullable=False)
     additional_price = db.Column(db.Numeric(10, 2))
+
+class ProductImage(db.Model):
+    __tablename__ = 'product_image'
+    __table_args__ = {'schema': 'bds'}
+
+    image_id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('bds.product.product_id'), nullable=False)
+    url = db.Column(db.String(255), nullable=False)
+    sort_order = db.Column(db.Integer)
 
 # ---------------------- OBJEDNÁVKY ----------------------
 
