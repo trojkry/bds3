@@ -23,7 +23,7 @@ def orders_list():
     orders = Order.query.join(CustomerProfile).join(OrderStatus).join(ShippingMethod).all()
     return render_template('orders/list.html', orders=orders)
 
-# --- DETAIL OBJEDNÁVKY ---
+# --- DETAIL OBJEDNÁVKY---
 @orders_bp.route('/orders/<int:order_id>')
 @login_required
 def order_detail(order_id):
@@ -35,19 +35,17 @@ def order_detail(order_id):
     ).get_or_404(order_id)
     return render_template('orders/detail.html', order=order)
 
-# --- ZMĚNA STATUSU (AJAX I KLASICKY) ---
+# --- ZMĚNA STATUSU ---
 @orders_bp.route('/orders/update_status/<int:order_id>', methods=['POST'])
 @login_required
 def order_update_status(order_id):
     order = Order.query.get_or_404(order_id)
     new_status_id = request.form.get('status_id', type=int)
     
-    # Detekce AJAX požadavku
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     if not new_status_id:
         if is_ajax:
-            # POUŽITÍ PŘEJMENOVANÉ FUNKCE
             return flask_jsonify({'success': False, 'message': 'Musíte vybrat status.'}), 400
         flash('Musíte vybrat nový status.', 'danger')
         return redirect(url_for('orders.order_detail', order_id=order_id))
@@ -58,7 +56,7 @@ def order_update_status(order_id):
         
         new_status_name = OrderStatus.query.get(new_status_id).status_name
         
-        # POUŽITÍ PŘEJMENOVANÉ FUNKCE
+        
         if is_ajax:
             return flask_jsonify({
                 'success': True, 
@@ -108,3 +106,12 @@ def order_modal_content(order_id):
     all_statuses = OrderStatus.query.all()
     
     return render_template('orders/modal_fragment.html', order=order, all_statuses=all_statuses)
+
+@orders_bp.route('/orders/detail_content/<int:order_id>')
+@login_required
+def order_detail_content(order_id):
+    order = Order.query.options(
+        db.joinedload(Order.items).joinedload(OrderItem.variant).joinedload(ProductVariant.product)
+    ).get_or_404(order_id)
+    
+    return render_template('orders/detail_fragment.html', order=order)

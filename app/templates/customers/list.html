@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Seznam zákazníků{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Seznam zákazníků</h2>
+
+<table class="table table-hover align-middle">
+    <thead class="table-light">
+        <tr>
+            <th style="width: 50px;"></th> <th>ID</th>
+            <th>Jméno</th>
+            <th>Příjmení</th>
+            <th>Email</th>
+            <th>Datum narození</th>
+            <th>Akce</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for customer in customers %}
+        <tr class="customer-row">
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-secondary toggle-details" 
+                        data-customer-id="{{ customer.customer_id }}"
+                        type="button">
+                    +
+                </button>
+            </td>
+            <td>{{ customer.customer_id }}</td>
+            <td class="fw-bold">{{ customer.first_name }}</td>
+            <td class="fw-bold">{{ customer.last_name }}</td>
+            <td>
+                {{ customer.user.email if customer.user else '-' }}
+            </td>
+            <td>{{ customer.date_of_birth.strftime('%d.%m.%Y') if customer.date_of_birth else '-' }}</td>
+            <td>
+                <a href="{{ url_for('customers.customer_edit', customer_id=customer.customer_id) }}" 
+                   class="btn btn-sm btn-info modal-trigger"
+                   data-title="Upravit zákazníka: {{ customer.first_name }} {{ customer.last_name }}">
+                   Upravit
+                </a>
+            </td>
+        </tr>
+
+        <tr id="detail-row-{{ customer.customer_id }}" class="d-none bg-light">
+            <td colspan="7" class="p-0 border-0">
+                <div id="detail-content-{{ customer.customer_id }}" class="collapse-content"></div>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="7">Nebyly nalezeny žádné záznamy.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="modal fade" id="universalModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Načítám...</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="universalModalBody">
+                <div class="text-center my-5"><div class="spinner-border text-primary"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script> 
+<script>
+$(document).ready(function() {
+    
+    // --- LOGIKA ROZBALOVÁNÍ ---
+    $('.toggle-details').on('click', function() {
+        var btn = $(this);
+        var customerId = btn.data('customer-id');
+        var detailRow = $('#detail-row-' + customerId);
+        var contentDiv = $('#detail-content-' + customerId);
+        
+        if (!detailRow.hasClass('d-none')) {
+            detailRow.addClass('d-none');
+            btn.text('+').removeClass('btn-secondary').addClass('btn-outline-secondary');
+            return;
+        }
+
+        btn.text('-').removeClass('btn-outline-secondary').addClass('btn-secondary');
+        detailRow.removeClass('d-none');
+
+        if (contentDiv.is(':empty')) {
+            contentDiv.html('<div class="p-4 text-center"><div class="spinner-border spinner-border-sm text-muted"></div> Načítám detaily...</div>');
+            
+            var url = "{{ url_for('customers.customer_detail_content', customer_id=0) }}".replace('0', customerId);
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                success: function(response) {
+                    contentDiv.html(response);
+                },
+                error: function() {
+                    contentDiv.html('<div class="p-3 text-danger">Chyba při načítání detailů.</div>');
+                }
+            });
+        }
+    });
+
+    // --- LOGIKA PRO MODAL (EDITACE) ---
+    $('.modal-trigger').on('click', function(e) {
+        if (e.which !== 1 && e.which !== 0) return;
+        if (e.ctrlKey || e.metaKey) return;
+
+        e.preventDefault();
+        
+        var url = $(this).attr('href');
+        var title = $(this).data('title') || 'Informace';
+        
+        var modal = $('#universalModal');
+        var modalBody = $('#universalModalBody');
+        
+        modal.find('.modal-title').text(title);
+        modalBody.html('<div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>');
+        
+        $.ajax({
+            url: url,
+            type: 'GET',
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            success: function(response) {
+                modalBody.html(response);
+            },
+            error: function() {
+                modalBody.html('<div class="alert alert-danger">Chyba při načítání dat.</div>');
+            }
+        });
+        
+        modal.modal('show');
+    });
+});
+</script>
+{% endblock %}

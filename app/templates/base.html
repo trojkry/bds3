@@ -25,6 +25,9 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('orders.orders_list') }}">Objednávky</a> 
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('customers.customers_list') }}">Zákazníci</a>
+                        </li>
                         {% endif %}
                 </ul>
                 
@@ -38,6 +41,7 @@
                         <li class="nav-item">
                             <a class="btn btn-outline-danger btn-sm" href="{{ url_for('auth.logout') }}">Odhlásit se</a>
                         </li>
+
                     {% else %}
                         <li class="nav-item">
                             <a class="btn btn-primary btn-sm" href="{{ url_for('auth.login') }}">Přihlásit se</a>

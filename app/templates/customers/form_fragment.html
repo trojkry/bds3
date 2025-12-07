@@ -1,0 +1,30 @@
+<form method="POST" action="{{ url_for('customers.customer_edit', customer_id=customer.customer_id) }}">
+    
+    <div class="mb-3">
+        <label for="first_name" class="form-label">Jméno:</label>
+        <input type="text" class="form-control" id="first_name" name="first_name" 
+               value="{{ customer.first_name }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="last_name" class="form-label">Příjmení:</label>
+        <input type="text" class="form-control" id="last_name" name="last_name" 
+               value="{{ customer.last_name }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="date_of_birth" class="form-label">Datum narození:</label>
+        <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" 
+               value="{{ customer.date_of_birth.strftime('%Y-%m-%d') if customer.date_of_birth else '' }}">
+    </div>
+
+    <div class="text-end border-top pt-3">
+        {% if request.headers.get('X-Requested-With') == 'XMLHttpRequest' %}
+            <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Zrušit</button>
+        {% else %}
+            <a href="{{ url_for('customers.customers_list') }}" class="btn btn-secondary me-2">Zrušit</a>
+        {% endif %}
+        
+        <button type="submit" class="btn btn-primary">Uložit změny</button>
+    </div>
+</form>
