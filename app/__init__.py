@@ -67,6 +67,9 @@ def create_app():
 
     from app.blueprints.customers import customers_bp
     app.register_blueprint(customers_bp)
+
+    from app.blueprints.categories import categories_bp
+    app.register_blueprint(categories_bp)
     
     @app.route('/')
     def index():

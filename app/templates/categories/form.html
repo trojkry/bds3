@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Kategorie{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{{ url_for('categories.categories_list') }}" class="btn btn-secondary mb-3">Zpět na seznam</a>
+
+    <h2 class="mb-4">
+        {% if category %}Upravit kategorii{% else %}Nová kategorie{% endif %}
+    </h2>
+
+    <div class="card shadow">
+        <div class="card-body">
+            {% include "categories/form_fragment.html" %}
+        </div>
+    </div>
+</div>
+{% endblock %}

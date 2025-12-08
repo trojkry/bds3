@@ -1,0 +1,27 @@
+<form method="POST" action="{{ url_for('categories.category_edit', category_id=category.category_id) if category else url_for('categories.category_add') }}">
+    
+    <div class="mb-3">
+        <label for="name" class="form-label">Název kategorie (*):</label>
+        <input type="text" class="form-control" id="name" name="name" 
+               value="{{ category.name if category else '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="parent_id" class="form-label">Nadřazená kategorie:</label>
+        <select class="form-select" id="parent_id" name="parent_id">
+            <option value="">-- Žádná (Hlavní kategorie) --</option>
+            {% for cat in all_categories %}
+                <option value="{{ cat.category_id }}" 
+                    {% if category and category.parent_id == cat.category_id %}selected{% endif %}>
+                    {{ cat.name }} (ID: {{ cat.category_id }})
+                </option>
+            {% endfor %}
+        </select>
+        <div class="form-text">Pokud vyberete nadřazenou, tato se stane podkategorií.</div>
+    </div>
+
+    <div class="text-end border-top pt-3">
+        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Zrušit</button>
+        <button type="submit" class="btn btn-primary">Uložit</button>
+    </div>
+</form>
