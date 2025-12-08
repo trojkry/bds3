@@ -73,6 +73,9 @@ def create_app():
 
     from app.blueprints.staff import staff_bp
     app.register_blueprint(staff_bp)
+
+    from app.blueprints.sqli import sqli_bp
+    app.register_blueprint(sqli_bp)
     
     @app.route('/')
     def index():
