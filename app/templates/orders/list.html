@@ -3,10 +3,91 @@
 {% block title %}Seznam objednávek{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
+<style>
+    .table thead th {
+        vertical-align: middle !important;
+        border-bottom-width: 2px;
+    }
 
+    .sortable-th {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .sortable-th a {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #212529;
+        text-decoration: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+        line-height: 1.2;
+        margin: 0;
+    }
+
+    .sortable-th a:hover {
+        background-color: #e9ecef;
+        color: #0d6efd;
+    }
+
+    .sort-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+    }
+    
+    .sort-icon i {
+        line-height: 0;
+        font-size: 0.85rem;
+        position: relative;
+        top: 1px;
+    }
+    
+    .suggestions-dropdown {
+        z-index: 9999 !important;
+        max-height: 200px;
+        overflow-y: auto;
+        background: white;
+        border: 1px solid #ddd;
+    }
+</style>
 
 <h2 class="mb-4">Seznam objednávek</h2>
+
+<form method="GET" class="row g-3 align-items-center mb-4">
+    <div class="col-auto">
+        <input type="text" name="search" class="form-control" placeholder="Hledat ID nebo zákazníka..." value="{{ search_term if search_term }}">
+    </div>
+    
+    <div class="col-auto">
+        <select name="status_id" class="form-select">
+            <option value="">-- Všechny statusy --</option>
+            {% for status in get_available_statuses() %}
+                <option value="{{ status.status_id }}" {% if selected_status_id == status.status_id %}selected{% endif %}>
+                    {{ status.status_name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div class="col-auto">
+        <select name="is_paid" class="form-select">
+            <option value="">-- Platba (Vše) --</option>
+            <option value="1" {% if selected_paid == '1' %}selected{% endif %}>Zaplaceno (ANO)</option>
+            <option value="0" {% if selected_paid == '0' %}selected{% endif %}>Nezaplaceno (NE)</option>
+        </select>
+    </div>
+
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Filtrovat</button>
+        <a href="{{ url_for('orders.orders_list') }}" class="btn btn-secondary">Zrušit</a>
+    </div>
+</form>
 
 <a href="{{ url_for('orders.order_create') }}" 
    class="btn btn-success mb-3 modal-trigger" 
@@ -15,16 +96,40 @@
     + Vytvořit novou objednávku
 </a>
 
-<table class="table table-hover align-middle">
-    <thead class="table-light">
+{% macro sort_link(column, title) %}
+    {% set next_order = 'asc' if sort_by == column and sort_order == 'desc' else 'desc' %}
+    
+    <div class="sortable-th">
+        <a href="{{ url_for('orders.orders_list', sort_by=column, sort_order=next_order, search=search_term, status_id=selected_status_id, is_paid=selected_paid) }}" 
+           title="Seřadit podle {{ title }}">
+            
+            <span class="fw-bold">{{ title }}</span>
+            
+            <span class="sort-icon">
+                {% if sort_by == column %}
+                    {% if sort_order == 'asc' %}
+                        <i class="bi bi-caret-up-fill text-primary"></i>
+                    {% else %}
+                        <i class="bi bi-caret-down-fill text-primary"></i>
+                    {% endif %}
+                {% else %}
+                    <i class="bi bi-arrow-down-up text-secondary fs-6" style="opacity: 0.5"></i>
+                {% endif %}
+            </span>
+        </a>
+    </div>
+{% endmacro %}
+
+<table class="table table-hover align-middle shadow-sm">
+    <thead class="table-light border-bottom border-2">
         <tr>
             <th style="width: 50px;"></th> 
-            <th>ID</th>
-            <th>Zákazník</th>
-            <th>Datum</th>
-            <th>Status</th>
-            <th>Částka</th>
-            <th>Zaplaceno</th>
+            <th style="min-width: 90px;">{{ sort_link('order_id', 'ID') }}</th>
+            <th>{{ sort_link('customer', 'Zákazník') }}</th>
+            <th>{{ sort_link('date', 'Datum') }}</th>
+            <th>{{ sort_link('status', 'Status') }}</th>
+            <th>{{ sort_link('amount', 'Částka') }}</th>
+            <th>{{ sort_link('paid', 'Zaplaceno') }}</th>
             <th>Akce</th>
         </tr>
     </thead>
@@ -87,15 +192,28 @@
     </div>
 </div>
 
-<style>
-    .suggestions-dropdown {
-        z-index: 9999 !important;
-        max-height: 200px;
-        overflow-y: auto;
-        background: white;
-        border: 1px solid #ddd;
-    }
-</style>
+<template id="product-row-template">
+    <tr>
+        <td class="position-relative" style="overflow: visible;"> 
+            <input type="text" class="form-control form-control-sm product-search" placeholder="Hledat..." autocomplete="off">
+            <div class="list-group position-absolute w-100 shadow mt-1 suggestions-dropdown suggestions-box" style="display: none; z-index: 1050;"></div>
+        </td>
+        <td>
+            <select name="variant_id[]" class="form-select form-select-sm variant-select" disabled required>
+                <option value="">-</option>
+            </select>
+        </td>
+        <td>
+            <input type="number" name="quantity[]" class="form-control form-control-sm quantity-input" value="1" min="1" required>
+        </td>
+        <td>
+            <input type="text" class="form-control-plaintext form-control-sm price-display text-end" readonly value="0 Kč">
+        </td>
+        <td class="text-center">
+            <button type="button" class="btn btn-link text-danger p-0 remove-row">X</button>
+        </td>
+    </tr>
+</template>
 
 {% endblock %}
 
@@ -138,7 +256,6 @@ $(document).ready(function() {
         modalDiv.modal('show');
     });
 
-    
     $(document).on('input', '#customer-search', function() {
         var query = $(this).val();
         var suggestionsBox = $('#customer-suggestions');
@@ -212,12 +329,11 @@ $(document).ready(function() {
 
                                 var select = row.find('.variant-select');
                                 select.empty();
-                                
                                 select.prop('disabled', false);
 
                                 if (p.variants.length === 0) {
                                     select.append('<option value="">Produkt nemá varianty!</option>');
-                                    select.addClass('is-invalid');
+                                    select.addClass('is-invalid'); 
                                 } else {
                                     select.removeClass('is-invalid');
                                     p.variants.forEach(function(v) {

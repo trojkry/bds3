@@ -3,7 +3,7 @@ from flask import jsonify as flask_jsonify
 from flask_login import login_required
 from app import db
 from app.models import Order, OrderItem, CustomerProfile, OrderStatus, ShippingMethod, ProductVariant, Product
-from sqlalchemy import or_
+from sqlalchemy import or_, cast, String
 from sqlalchemy.orm import joinedload
 import logging
 
@@ -20,8 +20,60 @@ def utility_processor():
 @orders_bp.route('/orders')
 @login_required
 def orders_list():
-    orders = Order.query.join(CustomerProfile).join(OrderStatus).join(ShippingMethod).all()
-    return render_template('orders/list.html', orders=orders)
+    search_term = request.args.get('search', '').strip()
+    status_id = request.args.get('status_id', type=int)
+    is_paid = request.args.get('is_paid', '') 
+    
+    sort_by = request.args.get('sort_by', 'order_id')
+    sort_order = request.args.get('sort_order', 'desc')
+
+    query = Order.query.join(CustomerProfile).join(OrderStatus).join(ShippingMethod)
+
+    if search_term:
+        conditions = [
+            CustomerProfile.first_name.ilike(f'%{search_term}%'),
+            CustomerProfile.last_name.ilike(f'%{search_term}%'),
+            cast(Order.order_id, String).ilike(f'%{search_term}%')
+        ]
+        query = query.filter(or_(*conditions))
+
+    if status_id:
+        query = query.filter(Order.status_id == status_id)
+    
+    if is_paid != '':
+        if is_paid == '1':
+            query = query.filter(Order.is_paid == True)
+        elif is_paid == '0':
+            query = query.filter(Order.is_paid == False)
+
+    order_column = Order.order_id
+    if sort_by == 'customer':
+        order_column = CustomerProfile.last_name
+    elif sort_by == 'date':
+        order_column = Order.order_date
+    elif sort_by == 'status':
+        order_column = OrderStatus.status_name
+    elif sort_by == 'amount':
+        order_column = Order.total_amount
+    elif sort_by == 'paid':
+        order_column = Order.is_paid
+    elif sort_by == 'order_id':
+        order_column = Order.order_id
+
+    if sort_order == 'asc':
+        query = query.order_by(order_column.asc())
+    else:
+        query = query.order_by(order_column.desc())
+
+    orders = query.all()
+    
+    return render_template('orders/list.html', 
+                           orders=orders,
+                           search_term=search_term,
+                           selected_status_id=status_id,
+                           selected_paid=is_paid,
+                           sort_by=sort_by,
+                           sort_order=sort_order)
 
 # --- DETAIL OBJEDNÁVKY FULL ---
 @orders_bp.route('/orders/<int:order_id>')
