@@ -1,0 +1,56 @@
+<div class="p-4 bg-light border-bottom border-start border-end rounded-bottom shadow-inset">
+    <div class="row">
+        <div class="col-md-3 text-center">
+            {% if product.primary_image_url %}
+                <img src="{{ product.primary_image_url }}" alt="{{ product.name }}" class="img-fluid rounded border bg-white p-1" style="max-height: 150px;">
+            {% else %}
+                <div class="text-muted p-4 border rounded bg-white">Bez obrázku</div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-9">
+            <h5 class="text-primary">{{ product.name }}</h5>
+            <p class="text-muted">{{ product.description or 'Bez popisu.' }}</p>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <strong>Kategorie:</strong> {{ product.category.name if product.category else 'Neznámá' }}<br>
+                    <strong>Základní cena:</strong> {{ product.base_price }} Kč
+                </div>
+                <div class="col-md-6 text-end">
+                    <a href="{{ url_for('products.product_edit', product_id=product.product_id) }}" 
+                       class="btn btn-sm btn-outline-primary modal-trigger"
+                       data-title="Upravit produkt: {{ product.name }}">
+                        <i class="bi bi-pencil"></i> Upravit kompletní data
+                    </a>
+                </div>
+            </div>
+
+            <h6 class="border-bottom pb-2 mt-3">Varianty produktu</h6>
+            {% if product.variants %}
+                <table class="table table-sm table-bordered bg-white">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>Atribut</th>
+                            <th>SKU</th>
+                            <th class="text-end">Příplatek</th>
+                            <th class="text-end">Výsledná cena</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for variant in product.variants %}
+                        <tr>
+                            <td>{{ variant.attribute_value }}</td>
+                            <td><small class="text-muted">{{ variant.sku }}</small></td>
+                            <td class="text-end text-success">+ {{ variant.additional_price }} Kč</td>
+                            <td class="text-end fw-bold">{{ product.base_price + (variant.additional_price or 0) }} Kč</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="alert alert-warning py-1 px-2 small d-inline-block">Tento produkt nemá definované žádné varianty.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>

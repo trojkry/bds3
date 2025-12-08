@@ -4,6 +4,7 @@ from app import db
 from app.models import Product, Category, ProductImage, ProductVariant
 from app.utils import handle_image_upload
 from sqlalchemy import or_
+from sqlalchemy.orm import joinedload
 import logging
 import random
 import string
@@ -64,14 +65,49 @@ def process_variants(product, form):
 def products_list():
     search_term = request.args.get('search', '').strip()
     category_id = request.args.get('category_id', type=int)
+    
+    sort_by = request.args.get('sort_by', 'product_id')
+    sort_order = request.args.get('sort_order', 'desc')
+
     query = Product.query.join(Category, isouter=True)
+    
+    
     if search_term:
-        query = query.filter(or_(Product.name.ilike(f'%{search_term}%'), Product.description.ilike(f'%{search_term}%')))
+        query = query.filter(or_(
+            Product.name.ilike(f'%{search_term}%'),
+            Product.description.ilike(f'%{search_term}%')
+        ))
+    
     if category_id:
         query = query.filter(Product.category_id == category_id)
-    products = query.order_by(Product.product_id.desc()).all()
+
+    
+    order_column = Product.product_id 
+    
+    if sort_by == 'name':
+        order_column = Product.name
+    elif sort_by == 'base_price':
+        order_column = Product.base_price
+    elif sort_by == 'category_name':
+        order_column = Category.name
+    elif sort_by == 'product_id':
+        order_column = Product.product_id
+
+    if sort_order == 'asc':
+        query = query.order_by(order_column.asc())
+    else:
+        query = query.order_by(order_column.desc())
+
+    products = query.all()
     categories = Category.query.all()
-    return render_template('products/list.html', products=products, categories=categories, search_term=search_term, selected_category_id=category_id)
+    
+    return render_template('products/list.html', 
+                           products=products, 
+                           categories=categories, 
+                           search_term=search_term,
+                           selected_category_id=category_id,
+                           sort_by=sort_by,      
+                           sort_order=sort_order) 
 
 # --- DETAIL PRODUKTU ---
 @products_bp.route('/products/<int:product_id>')
@@ -185,3 +221,16 @@ def product_delete(product_id):
         logger.error(f'Chyba mazání: {e}')
         flash('Chyba mazání.', 'danger')
     return redirect(url_for('products.products_list'))
+
+
+# --- HTML PRO DETAIL PRODUKTU ---
+@products_bp.route('/products/detail_content/<int:product_id>')
+@login_required
+def product_detail_content(product_id):
+    product = Product.query.options(
+        joinedload(Product.category),
+        joinedload(Product.variants),
+        joinedload(Product.images)
+    ).get_or_404(product_id)
+    
+    return render_template('products/detail_fragment.html', product=product)
