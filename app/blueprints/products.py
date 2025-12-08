@@ -11,11 +11,8 @@ import string
 products_bp = Blueprint('products', __name__)
 logger = logging.getLogger(__name__)
 
-# --- POMOCNÁ FUNKCE PRO ZPRACOVÁNÍ VARIANT ---
+# --- FUNKCE PRO ZPRACOVÁNÍ VARIANT ---
 def process_variants(product, form):
-    """
-    Zpracuje formulářová data pro varianty (přidání, editace, mazání).
-    """
     variant_ids = form.getlist('variant_id[]')
     attrs = form.getlist('variant_attr[]')
     skus = form.getlist('variant_sku[]')
@@ -95,28 +92,37 @@ def product_add():
     if request.method == 'POST':
         try:
             name = request.form.get('name')
-            description = request.form.get('description')
             base_price = request.form.get('base_price')
             category_id = request.form.get('category_id', type=int)
 
             if not all([name, base_price, category_id]):
                 flash('Vyplňte povinná pole.', 'danger')
+                template = 'products/form_fragment.html' if request.headers.get('X-Requested-With') == 'XMLHttpRequest' else 'products/form.html'
+                return render_template(template, product=None, categories=categories, form_data=request.form)
 
+            variant_attrs = request.form.getlist('variant_attr[]')
+            valid_variants = [attr for attr in variant_attrs if attr.strip()]
+
+            if not valid_variants:
+                flash('Nelze vytvořit produkt bez variant. Přidejte alespoň jednu.', 'danger')
+                
+                template = 'products/form_fragment.html' if request.headers.get('X-Requested-With') == 'XMLHttpRequest' else 'products/form.html'
+                return render_template(template, product=None, categories=categories, form_data=request.form)
+
+            description = request.form.get('description')
             new_product = Product(name=name, description=description, base_price=base_price, category_id=category_id)
             db.session.add(new_product)
-            db.session.flush()
-
+            db.session.flush() 
 
             file = request.files.get('product_image')
             image_url = handle_image_upload(new_product.product_id, file)
             if image_url:
                 db.session.add(ProductImage(product_id=new_product.product_id, url=image_url, sort_order=1))
 
-
             process_variants(new_product, request.form)
 
             db.session.commit()
-            flash(f'Produkt "{name}" a jeho varianty byly přidány.', 'success')
+            flash(f'Produkt "{name}" byl úspěšně vytvořen.', 'success')
             return redirect(url_for('products.products_list'))
             
         except Exception as e:

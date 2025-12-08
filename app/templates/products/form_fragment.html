@@ -134,17 +134,14 @@
 </template>
 
 <script>
-    // Protože se tento HTML načítá AJAXem do modalu, script se spustí hned po vložení
-    
-    // 1. Přidání řádku
     $('#add-variant-btn').off('click').on('click', function() {
         var template = document.getElementById('variant-row-template');
         var clone = template.content.cloneNode(true);
         $('#variants-tbody').append(clone);
         $('#no-variants-msg').hide();
+        $('#variants-validation-msg').addClass('d-none');
     });
 
-    // 2. Odebrání řádku (pro nově přidané řádky)
     $(document).on('click', '.remove-variant-row', function() {
         $(this).closest('tr').remove();
         if ($('#variants-tbody tr').length === 0) {
@@ -152,15 +149,36 @@
         }
     });
 
-    // 3. Změna barvy řádku při označení smazání (pro existující varianty)
     $(document).on('change', '.delete-checkbox', function() {
         var row = $(this).closest('tr');
         if ($(this).is(':checked')) {
             row.addClass('table-danger text-decoration-line-through');
-            row.find('input[type="text"], input[type="number"]').prop('readonly', true);
         } else {
             row.removeClass('table-danger text-decoration-line-through');
-            row.find('input[type="text"], input[type="number"]').prop('readonly', false);
+        }
+    });
+
+    $('#product-form').on('submit', function(e) {
+        var rowsCount = 0;
+        
+        $('#variants-tbody tr').each(function() {
+            
+            if ($(this).find('.delete-checkbox:checked').length === 0) {
+                rowsCount++;
+            }
+        });
+
+        if (rowsCount === 0) {
+            e.preventDefault(); 
+            
+            if ($('#variants-validation-msg').length === 0) {
+                $('<div id="variants-validation-msg" class="alert alert-danger mt-2 py-2"><i class="bi bi-exclamation-triangle-fill"></i> Musíte přidat alespoň jednu variantu produktu!</div>')
+                    .insertAfter('.table-responsive');
+            } else {
+                $('#variants-validation-msg').removeClass('d-none');
+            }
+            
+            $('.table-responsive')[0].scrollIntoView({behavior: "smooth"});
         }
     });
 </script>
