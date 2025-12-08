@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Zaměstnanec{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{{ url_for('staff.staff_list') }}" class="btn btn-secondary mb-3">Zpět na seznam</a>
+
+    <h2 class="mb-4">
+        {% if staff %}Upravit zaměstnance{% else %}Nový zaměstnanec{% endif %}
+    </h2>
+
+    <div class="card shadow">
+        <div class="card-body">
+            {% include "staff/form_fragment.html" %}
+        </div>
+    </div>
+</div>
+{% endblock %}

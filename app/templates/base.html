@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}BDS{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         body { padding-top: 20px; }
         .content { margin-top: 20px; }
@@ -20,12 +21,23 @@
                 <ul class="navbar-nav me-auto">
                     {% if current_user.is_authenticated %}
                         <li class="nav-item">
-                            <a class="nav-link" href="#">Produkty</a>
+                            <a class="nav-link" href="{{ url_for('products.products_list') }}">Produkty</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#">Objednávky</a>
+                            <a class="nav-link" href="{{ url_for('orders.orders_list') }}">Objednávky</a> 
                         </li>
-                    {% endif %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('customers.customers_list') }}">Zákazníci</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('categories.categories_list') }}">Kategorie</a>
+                        </li>
+                        {% if current_user.role.role_name == 'ADMIN' %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('staff.staff_list') }}">Zaměstnanci</a>
+                            </li>
+                        {% endif %}
+                        {% endif %}
                 </ul>
                 
                 <ul class="navbar-nav ms-auto">
@@ -38,6 +50,7 @@
                         <li class="nav-item">
                             <a class="btn btn-outline-danger btn-sm" href="{{ url_for('auth.logout') }}">Odhlásit se</a>
                         </li>
+
                     {% else %}
                         <li class="nav-item">
                             <a class="btn btn-primary btn-sm" href="{{ url_for('auth.login') }}">Přihlásit se</a>
@@ -60,6 +73,52 @@
         {% block content %}{% endblock %}
     </div>
 
+    <div class="modal fade" id="deleteConfirmationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill"></i> Potvrzení smazání</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="fs-5">Opravdu chcete tento záznam trvale odstranit?</p>
+                    <p class="text-muted small mb-0">Tato akce je nevratná a může smazat i související data.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušit</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Ano, smazat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var formToSubmit = null; 
+            var deleteModalEl = document.getElementById('deleteConfirmationModal');
+            var deleteModal = new bootstrap.Modal(deleteModalEl);
+
+            document.body.addEventListener('click', function(event) {
+                var button = event.target.closest('.delete-trigger');
+                
+                if (button) {
+                    event.preventDefault(); 
+                    formToSubmit = button.closest('form'); 
+                    deleteModal.show(); 
+                }
+            });
+
+            document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+                if (formToSubmit) {
+                    formToSubmit.submit(); 
+                }
+                deleteModal.hide();
+            });
+        });
+    </script>
+
+    {% block scripts %}{% endblock %}
 </body>
 </html>

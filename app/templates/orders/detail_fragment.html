@@ -1,0 +1,32 @@
+<div class="p-3 bg-light border-bottom border-start border-end rounded-bottom">
+    <h6 class="text-primary border-bottom pb-2">Zakoupené položky</h6>
+    
+    {% if order.items %}
+    <div class="table-responsive">
+        <table class="table table-sm table-bordered bg-white mb-0">
+            <thead class="table-secondary">
+                <tr>
+                    <th>Produkt</th>
+                    <th>Varianta (SKU)</th>
+                    <th class="text-end">Množství</th>
+                    <th class="text-end">Cena/ks</th>
+                    <th class="text-end">Celkem</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order.items %}
+                <tr>
+                    <td>{{ item.variant.product.name }}</td>
+                    <td>{{ item.variant.attribute_value }} <small class="text-muted">({{ item.variant.sku }})</small></td>
+                    <td class="text-end">{{ item.quantity }} ks</td>
+                    <td class="text-end">{{ item.unit_price }} Kč</td>
+                    <td class="text-end fw-bold">{{ item.quantity * item.unit_price }} Kč</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <p class="text-muted fst-italic">Žádné položky.</p>
+    {% endif %}
+</div>

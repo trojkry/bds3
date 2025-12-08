@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Detail objednávky: {{ order.order_id }}{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('orders.orders_list') }}" class="btn btn-secondary mb-3">Zpět na seznam objednávek</a>
+
+<h2 class="mb-4">Detail objednávky {{ order.order_id }}</h2>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">Základní informace</div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item"><strong>Zákazník:</strong> {{ order.customer.first_name }} {{ order.customer.last_name }}</li>
+                <li class="list-group-item"><strong>Datum:</strong> {{ order.order_date.strftime('%Y-%m-%d') }}</li>
+                <li class="list-group-item"><strong>Doprava:</strong> {{ order.shipping_method.name }} ({{ order.shipping_cost }} Kč)</li>
+                <li class="list-group-item"><strong>Celková částka:</strong> {{ order.total_amount }} Kč</li>
+                <li class="list-group-item"><strong>Zaplaceno:</strong> {% if order.is_paid %}ANO{% else %}NE{% endif %}</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                Aktuální status: {{ order.status.status_name }}
+            </div>
+            <div class="card-body">
+                <p>Změnit status (CRUD Update):</p>
+                <form method="POST" action="{{ url_for('orders.order_update_status', order_id=order.order_id) }}">
+                    <div class="input-group">
+                        <select name="status_id" class="form-select" required>
+                            <option value="">Vyberte nový status</option>
+                            {% for status in get_available_statuses() %}
+                                <option value="{{ status.status_id }}">{{ status.status_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-warning">Změnit</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header bg-dark text-white">
+        Položky objednávky
+    </div>
+    <div class="card-body">
+        {% if order.items %}
+        <table class="table table-sm table-bordered">
+            <thead>
+                <tr>
+                    <th>Produkt</th>
+                    <th>Varianta (SKU)</th>
+                    <th>Množství</th>
+                    <th>Jednotková cena</th>
+                    <th>Celkem</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order.items %}
+                <tr>
+                    <td>{{ item.variant.product.name }}</td>
+                    <td>{{ item.variant.attribute_value }} ({{ item.variant.sku }})</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.unit_price }} Kč</td>
+                    <td>{{ item.quantity * item.unit_price }} Kč</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>Tato objednávka neobsahuje žádné položky.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

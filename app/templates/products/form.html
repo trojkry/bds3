@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if product %}Upravit produkt{% else %}Přidat nový produkt{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{{ url_for('products.products_list') }}" class="btn btn-secondary mb-3">Zpět na seznam</a>
+
+    <h2 class="mb-4">
+        {% if product %}Upravit produkt (Full Page){% else %}Přidat nový produkt{% endif %}
+    </h2>
+
+    <div class="card shadow">
+        <div class="card-body">
+            {% include "products/form_fragment.html" %}
+        </div>
+    </div>
+</div>
+{% endblock %}

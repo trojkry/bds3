@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Seznam zákazníků{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+<style>
+    .table thead th {
+        vertical-align: middle !important;
+        border-bottom-width: 2px;
+    }
+
+    .sortable-th {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .sortable-th a {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #212529;
+        text-decoration: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+        line-height: 1.2;
+        margin: 0;
+    }
+
+    .sortable-th a:hover {
+        background-color: #e9ecef;
+        color: #0d6efd;
+    }
+
+    .sort-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+    }
+    
+    .sort-icon i {
+        line-height: 0;
+        font-size: 0.85rem;
+        position: relative;
+        top: 1px;
+    }
+</style>
+
+<h2 class="mb-4">Seznam zákazníků</h2>
+
+<form method="GET" class="row g-3 align-items-center mb-4">
+    <div class="col-auto">
+        <input type="text" name="search" class="form-control" placeholder="Hledat jméno, email, ID..." value="{{ search_term if search_term }}">
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Filtrovat</button>
+        <a href="{{ url_for('customers.customers_list') }}" class="btn btn-secondary">Zrušit</a>
+    </div>
+</form>
+
+{% macro sort_link(column, title) %}
+    {% set next_order = 'asc' if sort_by == column and sort_order == 'desc' else 'desc' %}
+    
+    <div class="sortable-th">
+        <a href="{{ url_for('customers.customers_list', sort_by=column, sort_order=next_order, search=search_term) }}" 
+           title="Seřadit podle {{ title }}">
+            
+            <span class="fw-bold">{{ title }}</span>
+            
+            <span class="sort-icon">
+                {% if sort_by == column %}
+                    {% if sort_order == 'asc' %}
+                        <i class="bi bi-caret-up-fill text-primary"></i>
+                    {% else %}
+                        <i class="bi bi-caret-down-fill text-primary"></i>
+                    {% endif %}
+                {% else %}
+                    <i class="bi bi-arrow-down-up text-secondary fs-6" style="opacity: 0.5"></i>
+                {% endif %}
+            </span>
+        </a>
+    </div>
+{% endmacro %}
+
+<table class="table table-hover align-middle shadow-sm">
+    <thead class="table-light border-bottom border-2">
+        <tr>
+            <th style="width: 50px;"></th> 
+            <th style="min-width: 90px;">{{ sort_link('customer_id', 'ID') }}</th>
+            <th>{{ sort_link('first_name', 'Jméno') }}</th>
+            <th>{{ sort_link('last_name', 'Příjmení') }}</th>
+            <th>{{ sort_link('email', 'Email') }}</th>
+            <th>{{ sort_link('dob', 'Datum narození') }}</th>
+            <th>Akce</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for customer in customers %}
+        <tr class="customer-row">
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-secondary toggle-details" 
+                        data-customer-id="{{ customer.customer_id }}"
+                        type="button">
+                    +
+                </button>
+            </td>
+            <td>{{ customer.customer_id }}</td>
+            <td class="fw-bold">{{ customer.first_name }}</td>
+            <td class="fw-bold">{{ customer.last_name }}</td>
+            <td>
+                {{ customer.user.email if customer.user else '-' }}
+            </td>
+            <td>{{ customer.date_of_birth.strftime('%d.%m.%Y') if customer.date_of_birth else '-' }}</td>
+            <td>
+                <a href="{{ url_for('customers.customer_edit', customer_id=customer.customer_id) }}" 
+                   class="btn btn-sm btn-info modal-trigger"
+                   data-title="Upravit zákazníka: {{ customer.first_name }} {{ customer.last_name }}">
+                   Upravit
+                </a>
+
+                <form method="POST" action="{{ url_for('customers.customer_delete', customer_id=customer.customer_id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-danger ms-1 delete-trigger">Smazat</button> 
+                </form>
+            </td>
+        </tr>
+
+        <tr id="detail-row-{{ customer.customer_id }}" class="d-none bg-light">
+            <td colspan="7" class="p-0 border-0">
+                <div id="detail-content-{{ customer.customer_id }}" class="collapse-content"></div>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="7">Nebyly nalezeny žádné záznamy.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="modal fade" id="universalModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Načítám...</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="universalModalBody">
+                <div class="text-center my-5"><div class="spinner-border text-primary"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script> 
+<script>
+$(document).ready(function() {
+    
+    $('.toggle-details').on('click', function() {
+        var btn = $(this);
+        var customerId = btn.data('customer-id');
+        var detailRow = $('#detail-row-' + customerId);
+        var contentDiv = $('#detail-content-' + customerId);
+        
+        if (!detailRow.hasClass('d-none')) {
+            detailRow.addClass('d-none');
+            btn.text('+').removeClass('btn-secondary').addClass('btn-outline-secondary');
+            return;
+        }
+
+        btn.text('-').removeClass('btn-outline-secondary').addClass('btn-secondary');
+        detailRow.removeClass('d-none');
+
+        if (contentDiv.is(':empty')) {
+            contentDiv.html('<div class="p-4 text-center"><div class="spinner-border spinner-border-sm text-muted"></div> Načítám detaily...</div>');
+            
+            var url = "{{ url_for('customers.customer_detail_content', customer_id=0) }}".replace('0', customerId);
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                success: function(response) {
+                    contentDiv.html(response);
+                },
+                error: function() {
+                    contentDiv.html('<div class="p-3 text-danger">Chyba při načítání detailů.</div>');
+                }
+            });
+        }
+    });
+
+    $(document).on('click', '.modal-trigger', function(e) {
+        if (e.which !== 1 && e.which !== 0) return;
+        if (e.ctrlKey || e.metaKey) return;
+        e.preventDefault();
+        
+        var url = $(this).attr('href');
+        var title = $(this).data('title') || 'Informace';
+        
+        var modal = $('#universalModal');
+        var modalBody = $('#universalModalBody');
+        
+        modal.find('.modal-title').text(title);
+        modalBody.html('<div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>');
+        
+        modal.modal('show');
+        
+        $.ajax({
+            url: url,
+            type: 'GET',
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            success: function(response) {
+                modalBody.html(response);
+            },
+            error: function() {
+                modalBody.html('<div class="alert alert-danger">Chyba při načítání dat.</div>');
+            }
+        });
+    });
+
+    $(document).on('submit', '#update-status-form', function(e) {
+        e.preventDefault();
+        var form = $(this);
+        var url = form.attr('action');
+        var data = form.serialize();
+        var messageDiv = $('#modal-status-message');
+
+        $.ajax({
+            url: url, type: 'POST', data: data,
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            success: function(response) {
+                if (response.success) {
+                    messageDiv.html('<div class="alert alert-success py-2">' + response.message + '</div>');
+                    $('#current-status-text').text(response.new_status_name);
+                } else {
+                    messageDiv.html('<div class="alert alert-danger py-2">' + response.message + '</div>');
+                }
+            },
+            error: function() {
+                messageDiv.html('<div class="alert alert-danger py-2">Chyba komunikace.</div>');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
