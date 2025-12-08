@@ -76,7 +76,6 @@
 <script>
 $(document).ready(function() {
     
-    // --- LOGIKA ROZBALOVÁNÍ ---
     $('.toggle-details').on('click', function() {
         var btn = $(this);
         var customerId = btn.data('customer-id');
@@ -110,7 +109,6 @@ $(document).ready(function() {
         }
     });
 
-    // --- LOGIKA PRO MODAL (EDITACE) ---
     $('.modal-trigger').on('click', function(e) {
         if (e.which !== 1 && e.which !== 0) return;
         if (e.ctrlKey || e.metaKey) return;

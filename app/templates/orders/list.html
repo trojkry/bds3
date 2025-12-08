@@ -3,12 +3,23 @@
 {% block title %}Seznam objednávek{% endblock %}
 
 {% block content %}
+
+
+
 <h2 class="mb-4">Seznam objednávek</h2>
+
+<a href="{{ url_for('orders.order_create') }}" 
+   class="btn btn-success mb-3 modal-trigger" 
+   data-title="Vytvořit novou objednávku"
+   data-modal-size="xl">
+    + Vytvořit novou objednávku
+</a>
 
 <table class="table table-hover align-middle">
     <thead class="table-light">
         <tr>
-            <th style="width: 50px;"></th> <th>ID</th>
+            <th style="width: 50px;"></th> 
+            <th>ID</th>
             <th>Zákazník</th>
             <th>Datum</th>
             <th>Status</th>
@@ -21,11 +32,7 @@
         {% for order in orders %}
         <tr>
             <td class="text-center">
-                <button class="btn btn-sm btn-outline-secondary toggle-details" 
-                        data-order-id="{{ order.order_id }}"
-                        type="button">
-                    +
-                </button>
+                <button class="btn btn-sm btn-outline-secondary toggle-details" data-order-id="{{ order.order_id }}">+</button>
             </td>
             <td>{{ order.order_id }}</td>
             <td>{{ order.customer.first_name }} {{ order.customer.last_name }}</td>
@@ -41,24 +48,32 @@
             </td>
             <td>
                 <a href="#" class="btn btn-sm btn-primary order-detail-modal-trigger" data-order-id="{{ order.order_id }}">Detail</a> 
-                
                 <form method="POST" action="{{ url_for('orders.order_delete', order_id=order.order_id) }}" style="display:inline;" 
                       onsubmit="return confirm('Opravdu chcete smazat objednávku {{ order.order_id }}?');">
                     <button type="submit" class="btn btn-sm btn-danger">Smazat</button> 
                 </form>
             </td>
         </tr>
-
         <tr id="detail-row-{{ order.order_id }}" class="d-none bg-light">
-            <td colspan="8" class="p-0 border-0">
-                <div id="detail-content-{{ order.order_id }}"></div>
-            </td>
+            <td colspan="8" class="p-0 border-0"><div id="detail-content-{{ order.order_id }}"></div></td>
         </tr>
         {% else %}
-        <tr><td colspan="8">Žádné objednávky.</td></tr>
+        <tr><td colspan="8">Žádná data.</td></tr>
         {% endfor %}
     </tbody>
 </table>
+
+<div class="modal fade" id="universalModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Info</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="universalModalBody"></div>
+        </div>
+    </div>
+</div>
 
 <div class="modal fade" id="orderDetailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -67,15 +82,20 @@
                 <h5 class="modal-title">Detail objednávky</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" id="modalBodyContent">
-                <p class="text-center">Načítám detail...</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zavřít</button>
-            </div>
+            <div class="modal-body" id="modalBodyContent"></div>
         </div>
     </div>
 </div>
+
+<style>
+    .suggestions-dropdown {
+        z-index: 9999 !important;
+        max-height: 200px;
+        overflow-y: auto;
+        background: white;
+        border: 1px solid #ddd;
+    }
+</style>
 
 {% endblock %}
 
@@ -84,6 +104,195 @@
 <script>
 $(document).ready(function() {
     
+    $('.modal-trigger').on('click', function(e) {
+        if (e.which !== 1 && e.which !== 0) return;
+        if (e.ctrlKey || e.metaKey) return;
+        e.preventDefault();
+        
+        var url = $(this).attr('href');
+        var title = $(this).data('title');
+        var size = $(this).data('modal-size'); 
+        
+        var modalDiv = $('#universalModal');
+        var modalDialog = modalDiv.find('.modal-dialog');
+        var modalBody = $('#universalModalBody');
+        
+        modalDialog.removeClass('modal-lg modal-xl');
+        if (size) modalDialog.addClass('modal-' + size);
+        
+        modalDiv.find('.modal-title').text(title);
+        modalBody.html('<div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>');
+        
+        $.ajax({
+            url: url,
+            type: 'GET',
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            success: function(response) {
+                modalBody.html(response);
+            },
+            error: function() {
+                modalBody.html('<div class="alert alert-danger">Chyba načítání.</div>');
+            }
+        });
+        
+        modalDiv.modal('show');
+    });
+
+    
+    $(document).on('input', '#customer-search', function() {
+        var query = $(this).val();
+        var suggestionsBox = $('#customer-suggestions');
+        
+        if (query.length < 2) { suggestionsBox.hide(); return; }
+
+        $.ajax({
+            url: "{{ url_for('orders.search_customers') }}",
+            data: { q: query },
+            success: function(data) {
+                suggestionsBox.empty();
+                if (data.length > 0) {
+                    data.forEach(function(c) {
+                        var item = $('<a href="#" class="list-group-item list-group-item-action"></a>')
+                            .text(c.text)
+                            .on('click', function(e) {
+                                e.preventDefault();
+                                $('#customer_id').val(c.id);
+                                $('#selected-customer-name').text(c.text);
+                                $('#selected-customer-display').removeClass('d-none').addClass('d-flex');
+                                $('#customer-search').val('').hide();
+                                suggestionsBox.hide();
+                            });
+                        suggestionsBox.append(item);
+                    });
+                    suggestionsBox.show();
+                } else { suggestionsBox.hide(); }
+            }
+        });
+    });
+
+    $(document).on('click', '#clear-customer', function() {
+        $('#customer_id').val('');
+        $('#selected-customer-display').addClass('d-none').removeClass('d-flex');
+        $('#customer-search').show().focus();
+    });
+
+    $(document).on('click', '#add-row-btn', function() {
+        var template = document.getElementById('product-row-template');
+        var clone = template.content.cloneNode(true);
+        $('#products-tbody').append(clone);
+        $('#empty-cart-msg').hide();
+    });
+
+    $(document).on('click', '.remove-row', function() {
+        $(this).closest('tr').remove();
+        if ($('#products-tbody tr').length === 0) $('#empty-cart-msg').show();
+    });
+
+    $(document).on('input', '.product-search', function() {
+        var input = $(this);
+        var query = input.val();
+        var row = input.closest('tr');
+        var suggestionsBox = row.find('.suggestions-box');
+
+        if (query.length < 2) { suggestionsBox.hide(); return; }
+
+        $.ajax({
+            url: "{{ url_for('orders.search_products') }}",
+            data: { q: query },
+            success: function(data) {
+                suggestionsBox.empty();
+                if (data.length > 0) {
+                    data.forEach(function(p) {
+                        var item = $('<a href="#" class="list-group-item list-group-item-action"></a>')
+                            .text(p.name)
+                            .on('click', function(e) {
+                                e.preventDefault();
+                                input.val(p.name).prop('readonly', true).addClass('bg-light');
+                                suggestionsBox.hide();
+
+                                var select = row.find('.variant-select');
+                                select.empty();
+                                
+                                select.prop('disabled', false);
+
+                                if (p.variants.length === 0) {
+                                    select.append('<option value="">Produkt nemá varianty!</option>');
+                                    select.addClass('is-invalid');
+                                } else {
+                                    select.removeClass('is-invalid');
+                                    p.variants.forEach(function(v) {
+                                        var opt = $('<option></option>')
+                                            .val(v.id)
+                                            .text(v.sku + ' - ' + v.attribute)
+                                            .attr('data-price', v.price); 
+                                        select.append(opt);
+                                    });
+                                    select.trigger('change');
+                                }
+                            });
+                        suggestionsBox.append(item);
+                    });
+                    suggestionsBox.show();
+                } else { suggestionsBox.hide(); }
+            }
+        });
+    });
+
+    $(document).on('change', '.variant-select', function() {
+        var selectedOption = $(this).find(':selected');
+        var price = selectedOption.attr('data-price');
+        
+        if (!price) {
+            price = 0;
+        } else {
+            price = parseFloat(price);
+        }
+        
+        if (isNaN(price)) price = 0;
+
+        $(this).closest('tr').find('.price-display').val(price.toFixed(2) + ' Kč');
+    });
+
+    $(document).on('submit', '#create-order-form', function(e) {
+        e.preventDefault();
+        var form = $(this);
+        var msgDiv = $('#create-order-messages');
+        
+        var hasValidItems = false;
+        form.find('.variant-select').each(function() {
+            if ($(this).val()) hasValidItems = true;
+        });
+
+        if (!hasValidItems) {
+            msgDiv.html('<div class="alert alert-danger">Musíte přidat alespoň jeden produkt s platnou variantou.</div>');
+            return;
+        }
+
+        $.ajax({
+            url: form.attr('action'),
+            type: 'POST',
+            data: form.serialize(),
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            success: function(response) {
+                if (response.success) {
+                    location.reload(); 
+                } else {
+                    msgDiv.html('<div class="alert alert-danger">' + response.message + '</div>');
+                }
+            },
+            error: function(xhr) {
+                var err = xhr.responseJSON ? xhr.responseJSON.message : "Chyba komunikace.";
+                msgDiv.html('<div class="alert alert-danger">' + err + '</div>');
+            }
+        });
+    });
+
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('.suggestions-dropdown').length && !$(e.target).closest('input').length) {
+            $('.suggestions-dropdown').hide();
+        }
+    });
+
     $('.toggle-details').on('click', function() {
         var btn = $(this);
         var orderId = btn.data('order-id');
@@ -95,56 +304,34 @@ $(document).ready(function() {
             btn.text('+').removeClass('btn-secondary').addClass('btn-outline-secondary');
             return;
         }
-
         btn.text('-').removeClass('btn-outline-secondary').addClass('btn-secondary');
         detailRow.removeClass('d-none');
 
         if (contentDiv.is(':empty')) {
-            contentDiv.html('<div class="p-3 text-center"><div class="spinner-border spinner-border-sm text-muted"></div> Načítám položky...</div>');
-            
-            
+            contentDiv.html('<div class="p-3 text-center"><div class="spinner-border spinner-border-sm text-muted"></div> Načítám...</div>');
             var url = "{{ url_for('orders.order_detail_content', order_id=0) }}".replace('0', orderId);
-
             $.ajax({
-                url: url,
-                type: 'GET',
-                success: function(response) {
-                    contentDiv.html(response);
-                },
-                error: function() {
-                    contentDiv.html('<div class="p-3 text-danger">Chyba při načítání položek.</div>');
-                }
+                url: url, type: 'GET',
+                success: function(r) { contentDiv.html(r); },
+                error: function() { contentDiv.html('Chyba.'); }
             });
         }
     });
 
-    
     $('.order-detail-modal-trigger').on('click', function(e) {
         e.preventDefault();
         var orderId = $(this).data('order-id');
         var modal = $('#orderDetailModal');
         var modalBody = $('#modalBodyContent');
-        
         modal.find('.modal-title').text('Detail objednávky #' + orderId);
-        modalBody.html('<p class="text-center">Načítám detail...</p>');
-        
         var url = "{{ url_for('orders.order_modal_content', order_id=0) }}".replace('0', orderId);
-
         $.ajax({
-            url: url,
-            type: 'GET',
-            success: function(response) {
-                modalBody.html(response);
-            },
-            error: function() {
-                modalBody.html('<div class="alert alert-danger">Chyba při načítání detailu.</div>');
-            }
+            url: url, type: 'GET',
+            success: function(r) { modalBody.html(r); }
         });
-        
         modal.modal('show');
     });
 
-    // --- ODESLÁNÍ FORMULÁŘE ---
     $(document).on('submit', '#update-status-form', function(e) {
         e.preventDefault();
         var form = $(this);
@@ -153,27 +340,21 @@ $(document).ready(function() {
         var messageDiv = $('#modal-status-message');
 
         $.ajax({
-            url: url,
-            type: 'POST',
-            data: data,
+            url: url, type: 'POST', data: data,
             headers: {'X-Requested-With': 'XMLHttpRequest'},
             success: function(response) {
                 if (response.success) {
                     messageDiv.html('<div class="alert alert-success py-2">' + response.message + '</div>');
                     $('#current-status-text').text(response.new_status_name);
-                    
-                    
-                    var actionUrlParts = url.split('/');
-                    var orderId = actionUrlParts[actionUrlParts.length - 1]; 
+                    var parts = url.split('/');
+                    var orderId = parts[parts.length - 1];
                     $('#row-status-' + orderId).text(response.new_status_name);
-
                 } else {
                     messageDiv.html('<div class="alert alert-danger py-2">' + response.message + '</div>');
                 }
             },
             error: function(xhr) {
-                var err = xhr.responseJSON ? xhr.responseJSON.message : "Chyba komunikace.";
-                messageDiv.html('<div class="alert alert-danger py-2">' + err + '</div>');
+                messageDiv.html('<div class="alert alert-danger py-2">Chyba.</div>');
             }
         });
     });

@@ -1,14 +1,65 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required
 from app import db
-from app.models import Product, Category, ProductImage
+from app.models import Product, Category, ProductImage, ProductVariant
 from app.utils import handle_image_upload
 from sqlalchemy import or_
-from sqlalchemy.orm import joinedload
 import logging
+import random
+import string
 
 products_bp = Blueprint('products', __name__)
 logger = logging.getLogger(__name__)
+
+# --- POMOCNÁ FUNKCE PRO ZPRACOVÁNÍ VARIANT ---
+def process_variants(product, form):
+    """
+    Zpracuje formulářová data pro varianty (přidání, editace, mazání).
+    """
+    variant_ids = form.getlist('variant_id[]')
+    attrs = form.getlist('variant_attr[]')
+    skus = form.getlist('variant_sku[]')
+    prices = form.getlist('variant_price[]')
+    
+
+    delete_ids = form.getlist('delete_variant[]')
+    if delete_ids:
+        ProductVariant.query.filter(ProductVariant.variant_id.in_(delete_ids)).delete(synchronize_session=False)
+
+
+    for v_id, attr, sku, price in zip(variant_ids, attrs, skus, prices):
+        
+        if v_id in delete_ids:
+            continue
+            
+        if not attr.strip():
+            continue 
+
+        try:
+            add_price = float(price) if price else 0.0
+        except ValueError:
+            add_price = 0.0
+
+        final_sku = sku.strip()
+        if not final_sku:
+
+            suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+            final_sku = f"{product.name[:3].upper()}-{attr[:3].upper()}-{suffix}"
+
+        if v_id == '0':
+            new_variant = ProductVariant(
+                product_id=product.product_id,
+                attribute_value=attr,
+                sku=final_sku,
+                additional_price=add_price
+            )
+            db.session.add(new_variant)
+        else:
+            existing = ProductVariant.query.get(int(v_id))
+            if existing:
+                existing.attribute_value = attr
+                existing.sku = final_sku
+                existing.additional_price = add_price
 
 # --- SEZNAM PRODUKTŮ ---
 @products_bp.route('/products')
@@ -16,40 +67,23 @@ logger = logging.getLogger(__name__)
 def products_list():
     search_term = request.args.get('search', '').strip()
     category_id = request.args.get('category_id', type=int)
-
     query = Product.query.join(Category, isouter=True)
-    
     if search_term:
-        query = query.filter(or_(
-            Product.name.ilike(f'%{search_term}%'),
-            Product.description.ilike(f'%{search_term}%')
-        ))
-    
+        query = query.filter(or_(Product.name.ilike(f'%{search_term}%'), Product.description.ilike(f'%{search_term}%')))
     if category_id:
         query = query.filter(Product.category_id == category_id)
-
     products = query.order_by(Product.product_id.desc()).all()
     categories = Category.query.all()
-    
-    return render_template('products/list.html', 
-                           products=products, 
-                           categories=categories, 
-                           search_term=search_term,
-                           selected_category_id=category_id)
+    return render_template('products/list.html', products=products, categories=categories, search_term=search_term, selected_category_id=category_id)
 
 # --- DETAIL PRODUKTU ---
 @products_bp.route('/products/<int:product_id>')
 @login_required
 def product_detail(product_id):
-    product = Product.query.options(
-        db.joinedload(Product.category),
-        db.joinedload(Product.variants),
-        db.joinedload(Product.images)
-    ).get_or_404(product_id)
-    
+
+    product = Product.query.options(db.joinedload(Product.category), db.joinedload(Product.variants), db.joinedload(Product.images)).get_or_404(product_id)
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return render_template('products/modal_fragment.html', product=product)
-    
     return render_template('products/detail.html', product=product)
 
 # --- PŘIDAT PRODUKT ---
@@ -67,31 +101,31 @@ def product_add():
 
             if not all([name, base_price, category_id]):
                 flash('Vyplňte povinná pole.', 'danger')
-                template = 'products/form_fragment.html' if request.headers.get('X-Requested-With') == 'XMLHttpRequest' else 'products/form.html'
-                return render_template(template, form_data=request.form, categories=categories, product=None)
 
             new_product = Product(name=name, description=description, base_price=base_price, category_id=category_id)
             db.session.add(new_product)
             db.session.flush()
+
 
             file = request.files.get('product_image')
             image_url = handle_image_upload(new_product.product_id, file)
             if image_url:
                 db.session.add(ProductImage(product_id=new_product.product_id, url=image_url, sort_order=1))
 
+
+            process_variants(new_product, request.form)
+
             db.session.commit()
-            flash(f'Produkt "{name}" přidán.', 'success')
+            flash(f'Produkt "{name}" a jeho varianty byly přidány.', 'success')
             return redirect(url_for('products.products_list'))
             
         except Exception as e:
             db.session.rollback()
             logger.error(f'Chyba add: {e}')
-            flash('Chyba uložení.', 'danger')
+            flash(f'Chyba uložení: {str(e)}', 'danger')
 
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render_template('products/form_fragment.html', product=None, categories=categories)
-
-    return render_template('products/form.html', categories=categories, product=None)
+    template = 'products/form_fragment.html' if request.headers.get('X-Requested-With') == 'XMLHttpRequest' else 'products/form.html'
+    return render_template(template, product=None, categories=categories)
 
 # --- UPRAVIT PRODUKT ---
 @products_bp.route('/products/edit/<int:product_id>', methods=['GET', 'POST'])
@@ -109,13 +143,14 @@ def product_edit(product_id):
             
             file = request.files.get('product_image')
             image_url = handle_image_upload(product.product_id, file)
-
             if image_url:
                 primary_image = ProductImage.query.filter_by(product_id=product.product_id, sort_order=1).first()
                 if primary_image:
                     primary_image.url = image_url
                 else:
                     db.session.add(ProductImage(product_id=product.product_id, url=image_url, sort_order=1))
+            
+            process_variants(product, request.form)
             
             db.session.commit()
             flash(f'Produkt "{product.name}" aktualizován.', 'success')
@@ -126,10 +161,9 @@ def product_edit(product_id):
             logger.error(f'Chyba edit: {e}')
             flash('Chyba při aktualizaci.', 'danger')
 
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render_template('products/form_fragment.html', product=product, categories=categories)
-
-    return render_template('products/form.html', categories=categories, product=product)
+    
+    template = 'products/form_fragment.html' if request.headers.get('X-Requested-With') == 'XMLHttpRequest' else 'products/form.html'
+    return render_template(template, product=product, categories=categories)
 
 # --- SMAZAT PRODUKT ---
 @products_bp.route('/products/delete/<int:product_id>', methods=['POST'])

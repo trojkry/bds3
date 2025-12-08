@@ -17,7 +17,7 @@ def customers_list():
     customers = CustomerProfile.query.options(joinedload(CustomerProfile.user)).order_by(CustomerProfile.customer_id).all()
     return render_template('customers/list.html', customers=customers)
 
-# --- HYBRIDNÍ EDITACE ZÁKAZNÍKA ---
+# --- EDITACE ZÁKAZNÍKA ---
 @customers_bp.route('/customers/edit/<int:customer_id>', methods=['GET', 'POST'])
 @login_required
 def customer_edit(customer_id):
@@ -48,7 +48,7 @@ def customer_edit(customer_id):
 
     return render_template('customers/form.html', customer=customer)
 
-# --- HTML FRAGMENT PRO DETAIL ZÁKAZNÍKA ---
+# --- HTML PRO DETAIL ZÁKAZNÍKA ---
 @customers_bp.route('/customers/detail_content/<int:customer_id>')
 @login_required
 def customer_detail_content(customer_id):

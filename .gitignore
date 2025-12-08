@@ -10,3 +10,4 @@ __pycache__/
 Thumbs.db
 
 logs/
+static/uploads/products/
