@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask import jsonify as flask_jsonify
 from flask_login import login_required
 from app import db
-from app.models import Order, OrderItem, CustomerProfile, OrderStatus, ShippingMethod, ProductVariant, Product
+from app.models import Order, OrderItem, CustomerProfile, OrderStatus, ShippingMethod, ProductVariant, Product, PaymentTransaction
 from sqlalchemy import or_, cast, String
 from sqlalchemy.orm import joinedload
 import logging
@@ -133,6 +133,13 @@ def order_update_status(order_id):
 def order_delete(order_id):
     order = Order.query.get_or_404(order_id)
     try:
+        # 1. Smazat položky objednávky (OrderItem)
+        OrderItem.query.filter_by(order_id=order.order_id).delete()
+        
+        # 2. Smazat platby (PaymentTransaction) - pokud existují
+        PaymentTransaction.query.filter_by(order_id=order.order_id).delete()
+
+        # 3. Smazat samotnou objednávku
         db.session.delete(order)
         db.session.commit()
         flash(f'Objednávka {order_id} byla úspěšně smazána.', 'success')

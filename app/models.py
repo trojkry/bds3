@@ -170,3 +170,32 @@ class OrderItem(db.Model):
     unit_price = db.Column(db.Numeric(10, 2), nullable=False)
     
     variant = relationship('ProductVariant')
+
+class PaymentTransaction(db.Model):
+    __tablename__ = 'payment_transaction'
+    __table_args__ = {'schema': 'bds'}
+
+    transaction_id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('bds.orders.order_id'), nullable=False)
+    amount = db.Column(db.Numeric(10, 2), nullable=False)
+    payment_method = db.Column(db.String(50), nullable=False)
+    transaction_timestamp = db.Column(db.DateTime, server_default=db.func.now())
+
+class ShoppingCart(db.Model):
+    __tablename__ = 'shopping_cart'
+    __table_args__ = {'schema': 'bds'}
+
+    cart_id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('bds.customer_profile.customer_id'))
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    
+    items = relationship('CartItem', backref='cart', lazy=True, cascade="all, delete-orphan")
+
+class CartItem(db.Model):
+    __tablename__ = 'cart_item'
+    __table_args__ = {'schema': 'bds'}
+
+    cart_item_id = db.Column(db.Integer, primary_key=True)
+    cart_id = db.Column(db.Integer, db.ForeignKey('bds.shopping_cart.cart_id'), nullable=False)
+    variant_id = db.Column(db.Integer, db.ForeignKey('bds.product_variant.variant_id'), nullable=False)
+    quantity = db.Column(db.Integer, default=1)

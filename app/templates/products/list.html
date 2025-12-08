@@ -131,9 +131,8 @@
                    class="btn btn-sm btn-info modal-trigger"
                    data-title="Upravit produkt: {{ product.name }}">Upravit</a> 
                 
-                <form method="POST" action="{{ url_for('products.product_delete', product_id=product.product_id) }}" style="display:inline;" 
-                      onsubmit="return confirm('Opravdu chcete smazat produkt {{ product.name }}?');">
-                    <button type="submit" class="btn btn-sm btn-danger">Smazat</button> 
+                <form method="POST" action="{{ url_for('products.product_delete', product_id=product.product_id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-danger delete-trigger">Smazat</button> 
                 </form>
             </td>
         </tr>

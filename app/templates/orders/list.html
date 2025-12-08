@@ -153,9 +153,8 @@
             </td>
             <td>
                 <a href="#" class="btn btn-sm btn-primary order-detail-modal-trigger" data-order-id="{{ order.order_id }}">Detail</a> 
-                <form method="POST" action="{{ url_for('orders.order_delete', order_id=order.order_id) }}" style="display:inline;" 
-                      onsubmit="return confirm('Opravdu chcete smazat objednávku {{ order.order_id }}?');">
-                    <button type="submit" class="btn btn-sm btn-danger">Smazat</button> 
+                <form method="POST" action="{{ url_for('orders.order_delete', order_id=order.order_id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-danger delete-trigger">Smazat</button> 
                 </form>
             </td>
         </tr>

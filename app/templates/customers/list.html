@@ -3,16 +3,97 @@
 {% block title %}Seznam zákazníků{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+<style>
+    .table thead th {
+        vertical-align: middle !important;
+        border-bottom-width: 2px;
+    }
+
+    .sortable-th {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .sortable-th a {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #212529;
+        text-decoration: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+        line-height: 1.2;
+        margin: 0;
+    }
+
+    .sortable-th a:hover {
+        background-color: #e9ecef;
+        color: #0d6efd;
+    }
+
+    .sort-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+    }
+    
+    .sort-icon i {
+        line-height: 0;
+        font-size: 0.85rem;
+        position: relative;
+        top: 1px;
+    }
+</style>
+
 <h2 class="mb-4">Seznam zákazníků</h2>
 
-<table class="table table-hover align-middle">
-    <thead class="table-light">
+<form method="GET" class="row g-3 align-items-center mb-4">
+    <div class="col-auto">
+        <input type="text" name="search" class="form-control" placeholder="Hledat jméno, email, ID..." value="{{ search_term if search_term }}">
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Filtrovat</button>
+        <a href="{{ url_for('customers.customers_list') }}" class="btn btn-secondary">Zrušit</a>
+    </div>
+</form>
+
+{% macro sort_link(column, title) %}
+    {% set next_order = 'asc' if sort_by == column and sort_order == 'desc' else 'desc' %}
+    
+    <div class="sortable-th">
+        <a href="{{ url_for('customers.customers_list', sort_by=column, sort_order=next_order, search=search_term) }}" 
+           title="Seřadit podle {{ title }}">
+            
+            <span class="fw-bold">{{ title }}</span>
+            
+            <span class="sort-icon">
+                {% if sort_by == column %}
+                    {% if sort_order == 'asc' %}
+                        <i class="bi bi-caret-up-fill text-primary"></i>
+                    {% else %}
+                        <i class="bi bi-caret-down-fill text-primary"></i>
+                    {% endif %}
+                {% else %}
+                    <i class="bi bi-arrow-down-up text-secondary fs-6" style="opacity: 0.5"></i>
+                {% endif %}
+            </span>
+        </a>
+    </div>
+{% endmacro %}
+
+<table class="table table-hover align-middle shadow-sm">
+    <thead class="table-light border-bottom border-2">
         <tr>
-            <th style="width: 50px;"></th> <th>ID</th>
-            <th>Jméno</th>
-            <th>Příjmení</th>
-            <th>Email</th>
-            <th>Datum narození</th>
+            <th style="width: 50px;"></th> 
+            <th style="min-width: 90px;">{{ sort_link('customer_id', 'ID') }}</th>
+            <th>{{ sort_link('first_name', 'Jméno') }}</th>
+            <th>{{ sort_link('last_name', 'Příjmení') }}</th>
+            <th>{{ sort_link('email', 'Email') }}</th>
+            <th>{{ sort_link('dob', 'Datum narození') }}</th>
             <th>Akce</th>
         </tr>
     </thead>
@@ -39,6 +120,10 @@
                    data-title="Upravit zákazníka: {{ customer.first_name }} {{ customer.last_name }}">
                    Upravit
                 </a>
+
+                <form method="POST" action="{{ url_for('customers.customer_delete', customer_id=customer.customer_id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-danger ms-1 delete-trigger">Smazat</button> 
+                </form>
             </td>
         </tr>
 
@@ -109,10 +194,9 @@ $(document).ready(function() {
         }
     });
 
-    $('.modal-trigger').on('click', function(e) {
+    $(document).on('click', '.modal-trigger', function(e) {
         if (e.which !== 1 && e.which !== 0) return;
         if (e.ctrlKey || e.metaKey) return;
-
         e.preventDefault();
         
         var url = $(this).attr('href');
@@ -123,6 +207,8 @@ $(document).ready(function() {
         
         modal.find('.modal-title').text(title);
         modalBody.html('<div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>');
+        
+        modal.modal('show');
         
         $.ajax({
             url: url,
@@ -135,8 +221,30 @@ $(document).ready(function() {
                 modalBody.html('<div class="alert alert-danger">Chyba při načítání dat.</div>');
             }
         });
-        
-        modal.modal('show');
+    });
+
+    $(document).on('submit', '#update-status-form', function(e) {
+        e.preventDefault();
+        var form = $(this);
+        var url = form.attr('action');
+        var data = form.serialize();
+        var messageDiv = $('#modal-status-message');
+
+        $.ajax({
+            url: url, type: 'POST', data: data,
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            success: function(response) {
+                if (response.success) {
+                    messageDiv.html('<div class="alert alert-success py-2">' + response.message + '</div>');
+                    $('#current-status-text').text(response.new_status_name);
+                } else {
+                    messageDiv.html('<div class="alert alert-danger py-2">' + response.message + '</div>');
+                }
+            },
+            error: function() {
+                messageDiv.html('<div class="alert alert-danger py-2">Chyba komunikace.</div>');
+            }
+        });
     });
 });
 </script>
