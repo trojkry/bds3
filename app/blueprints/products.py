@@ -3,7 +3,7 @@ from flask_login import login_required
 from app import db
 from app.models import Product, Category, ProductImage, ProductVariant
 from app.utils import handle_image_upload
-from sqlalchemy import or_
+from sqlalchemy import or_, cast, String
 from sqlalchemy.orm import joinedload
 import logging
 import random
@@ -19,14 +19,11 @@ def process_variants(product, form):
     skus = form.getlist('variant_sku[]')
     prices = form.getlist('variant_price[]')
     
-
     delete_ids = form.getlist('delete_variant[]')
     if delete_ids:
         ProductVariant.query.filter(ProductVariant.variant_id.in_(delete_ids)).delete(synchronize_session=False)
 
-
     for v_id, attr, sku, price in zip(variant_ids, attrs, skus, prices):
-        
         if v_id in delete_ids:
             continue
             
@@ -40,7 +37,6 @@ def process_variants(product, form):
 
         final_sku = sku.strip()
         if not final_sku:
-
             suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
             final_sku = f"{product.name[:3].upper()}-{attr[:3].upper()}-{suffix}"
 
@@ -71,19 +67,19 @@ def products_list():
 
     query = Product.query.join(Category, isouter=True)
     
-    
     if search_term:
-        query = query.filter(or_(
+        conditions = [
             Product.name.ilike(f'%{search_term}%'),
-            Product.description.ilike(f'%{search_term}%')
-        ))
+            Product.description.ilike(f'%{search_term}%'),
+            cast(Product.product_id, String).ilike(f'%{search_term}%')
+        ]
+        
+        query = query.filter(or_(*conditions))
     
     if category_id:
         query = query.filter(Product.category_id == category_id)
 
-    
     order_column = Product.product_id 
-    
     if sort_by == 'name':
         order_column = Product.name
     elif sort_by == 'base_price':
@@ -106,18 +102,31 @@ def products_list():
                            categories=categories, 
                            search_term=search_term,
                            selected_category_id=category_id,
-                           sort_by=sort_by,      
-                           sort_order=sort_order) 
+                           sort_by=sort_by,
+                           sort_order=sort_order)
 
 # --- DETAIL PRODUKTU ---
 @products_bp.route('/products/<int:product_id>')
 @login_required
 def product_detail(product_id):
-
     product = Product.query.options(db.joinedload(Product.category), db.joinedload(Product.variants), db.joinedload(Product.images)).get_or_404(product_id)
+    
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return render_template('products/modal_fragment.html', product=product)
+    
     return render_template('products/detail.html', product=product)
+
+# --- FRAGMENT PRO ACCORDION ---
+@products_bp.route('/products/detail_content/<int:product_id>')
+@login_required
+def product_detail_content(product_id):
+    product = Product.query.options(
+        joinedload(Product.category),
+        joinedload(Product.variants),
+        joinedload(Product.images)
+    ).get_or_404(product_id)
+    
+    return render_template('products/detail_fragment.html', product=product)
 
 # --- PŘIDAT PRODUKT ---
 @products_bp.route('/products/add', methods=['GET', 'POST'])
@@ -141,14 +150,13 @@ def product_add():
 
             if not valid_variants:
                 flash('Nelze vytvořit produkt bez variant. Přidejte alespoň jednu.', 'danger')
-                
                 template = 'products/form_fragment.html' if request.headers.get('X-Requested-With') == 'XMLHttpRequest' else 'products/form.html'
                 return render_template(template, product=None, categories=categories, form_data=request.form)
 
             description = request.form.get('description')
             new_product = Product(name=name, description=description, base_price=base_price, category_id=category_id)
             db.session.add(new_product)
-            db.session.flush() 
+            db.session.flush()
 
             file = request.files.get('product_image')
             image_url = handle_image_upload(new_product.product_id, file)
@@ -185,6 +193,7 @@ def product_edit(product_id):
             
             file = request.files.get('product_image')
             image_url = handle_image_upload(product.product_id, file)
+
             if image_url:
                 primary_image = ProductImage.query.filter_by(product_id=product.product_id, sort_order=1).first()
                 if primary_image:
@@ -203,7 +212,6 @@ def product_edit(product_id):
             logger.error(f'Chyba edit: {e}')
             flash('Chyba při aktualizaci.', 'danger')
 
-    
     template = 'products/form_fragment.html' if request.headers.get('X-Requested-With') == 'XMLHttpRequest' else 'products/form.html'
     return render_template(template, product=product, categories=categories)
 
@@ -221,16 +229,3 @@ def product_delete(product_id):
         logger.error(f'Chyba mazání: {e}')
         flash('Chyba mazání.', 'danger')
     return redirect(url_for('products.products_list'))
-
-
-# --- HTML PRO DETAIL PRODUKTU ---
-@products_bp.route('/products/detail_content/<int:product_id>')
-@login_required
-def product_detail_content(product_id):
-    product = Product.query.options(
-        joinedload(Product.category),
-        joinedload(Product.variants),
-        joinedload(Product.images)
-    ).get_or_404(product_id)
-    
-    return render_template('products/detail_fragment.html', product=product)

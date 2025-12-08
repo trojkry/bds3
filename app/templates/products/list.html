@@ -12,23 +12,21 @@
     }
 
     .sortable-th {
-        display: inline-flex;       
-        align-items: center;        
+        display: inline-flex;
+        align-items: center;
     }
 
     .sortable-th a {
-        display: flex;              
-        align-items: center;        
-        gap: 6px;                   
-        
+        display: flex;
+        align-items: center;
+        gap: 6px;
         color: #212529;
         text-decoration: none;
         padding: 4px 8px;
         border-radius: 4px;
         transition: background-color 0.2s;
-        
-        line-height: 1.2;           
-        margin: 0;                  
+        line-height: 1.2;
+        margin: 0;
     }
 
     .sortable-th a:hover {
@@ -36,19 +34,18 @@
         color: #0d6efd;
     }
 
-    
     .sort-icon {
-        display: inline-flex;       
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        height: 100%;               
+        height: 100%;
     }
     
     .sort-icon i {
-        line-height: 0;             
-        font-size: 0.85rem;         
-        position: relative;         
-        top: 1px;                   
+        line-height: 0;
+        font-size: 0.85rem;
+        position: relative;
+        top: 1px;
     }
 </style>
 
@@ -56,7 +53,7 @@
 
 <form method="GET" class="row g-3 align-items-center mb-4">
     <div class="col-auto">
-        <input type="text" name="search" class="form-control" placeholder="Hledat..." value="{{ search_term if search_term }}">
+        <input type="text" name="search" class="form-control" placeholder="Hledat název nebo ID..." value="{{ search_term if search_term }}">
     </div>
     <div class="col-auto">
         <select name="category_id" class="form-select">
@@ -103,7 +100,8 @@
 <table class="table table-hover align-middle shadow-sm">
     <thead class="table-light border-bottom border-2">
         <tr>
-            <th style="width: 50px;"></th> <th style="width: 80px;">Obrázek</th> 
+            <th style="width: 50px;"></th>
+            <th style="width: 80px;">Obrázek</th> 
             
             <th style="min-width: 90px;">{{ sort_link('product_id', 'ID') }}</th>
             <th>{{ sort_link('name', 'Název') }}</th>

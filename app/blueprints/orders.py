@@ -185,13 +185,11 @@ def order_create():
             db.session.add(new_order)
             db.session.flush()
 
-            
             total_items_price = 0
             variant_ids = request.form.getlist('variant_id[]')
             quantities = request.form.getlist('quantity[]')
             
             valid_items_count = 0
-            
             
             if not variant_ids:
                 raise ValueError("Objednávka neobsahuje žádné produkty.")
@@ -238,7 +236,6 @@ def order_create():
             flash(msg, 'danger')
             return redirect(url_for('orders.orders_list'))
 
-    
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return render_template('orders/create_fragment.html', shipping_methods=shipping_methods)
 
