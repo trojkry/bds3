@@ -1,0 +1,37 @@
+<form method="POST" action="{{ url_for('staff.staff_edit', staff_id=staff.staff_id) if staff else url_for('staff.staff_add') }}">
+    
+    <div class="mb-3">
+        <label for="email" class="form-label">Email (*):</label>
+        <input type="email" class="form-control" id="email" name="email" 
+               value="{{ staff.email if staff else '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="password" class="form-label">Heslo {% if staff %}(nevyplňujte pro zachování){% else %}(*){% endif %}:</label>
+        <input type="password" class="form-control" id="password" name="password" 
+               {% if not staff %}required{% endif %}>
+    </div>
+
+    <div class="mb-3">
+        <label for="role_id" class="form-label">Role (*):</label>
+        <select class="form-select" id="role_id" name="role_id" required>
+            {% for role in roles %}
+                <option value="{{ role.role_id }}" 
+                    {% if staff and staff.role_id == role.role_id %}selected{% endif %}>
+                    {{ role.role_name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="hire_date" class="form-label">Datum nástupu (*):</label>
+        <input type="date" class="form-control" id="hire_date" name="hire_date"
+               value="{{ staff.hire_date.strftime('%Y-%m-%d') if staff else '' }}" required>
+    </div>
+
+    <div class="text-end border-top pt-3">
+        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Zrušit</button>
+        <button type="submit" class="btn btn-primary">Uložit</button>
+    </div>
+</form>

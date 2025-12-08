@@ -1,59 +1,53 @@
 {% extends "base.html" %}
 
-{% block title %}Seznam Kategorií{% endblock %}
+{% block title %}Seznam Zaměstnanců{% endblock %}
 
 {% block content %}
-<h2 class="mb-4">Seznam kategorií</h2>
+<h2 class="mb-4">Správa zaměstnanců</h2>
 
-<form method="GET" class="row g-3 align-items-center mb-4">
-    <div class="col-auto">
-        <input type="text" name="search" class="form-control" placeholder="Hledat název..." value="{{ search_term if search_term }}">
-    </div>
-    <div class="col-auto">
-        <button type="submit" class="btn btn-primary">Hledat</button>
-        <a href="{{ url_for('categories.categories_list') }}" class="btn btn-secondary">Zrušit</a>
-    </div>
-</form>
-
-<a href="{{ url_for('categories.category_add') }}" class="btn btn-success mb-3 modal-trigger" data-title="Přidat novou kategorii">
-    + Nová kategorie
+<a href="{{ url_for('staff.staff_add') }}" class="btn btn-success mb-3 modal-trigger" data-title="Přidat nového zaměstnance">
+    + Nový zaměstnanec
 </a>
 
 <table class="table table-hover align-middle shadow-sm">
     <thead class="table-light">
         <tr>
             <th>ID</th>
-            <th>Název</th>
-            <th>Nadřazená kategorie (Parent)</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Datum nástupu</th>
             <th>Akce</th>
         </tr>
     </thead>
     <tbody>
-        {% for cat in categories %}
+        {% for staff in staff_members %}
         <tr>
-            <td>{{ cat.category_id }}</td>
-            <td class="fw-bold">{{ cat.name }}</td>
+            <td>{{ staff.staff_id }}</td>
+            <td class="fw-bold">{{ staff.email }}</td>
             <td>
-                {% if cat.parent_id %}
-                    <span class="badge bg-secondary">ID: {{ cat.parent_id }}</span>
+                {% if staff.role.role_name == 'admin' %}
+                    <span class="badge bg-danger">Admin</span>
                 {% else %}
-                    <span class="text-muted small">- Hlavní -</span>
+                    <span class="badge bg-info text-dark">{{ staff.role.role_name }}</span>
                 {% endif %}
             </td>
+            <td>{{ staff.hire_date.strftime('%d.%m.%Y') }}</td>
             <td>
-                <a href="{{ url_for('categories.category_edit', category_id=cat.category_id) }}" 
+                <a href="{{ url_for('staff.staff_edit', staff_id=staff.staff_id) }}" 
                    class="btn btn-sm btn-info modal-trigger"
-                   data-title="Upravit kategorii: {{ cat.name }}">
+                   data-title="Upravit zaměstnance: {{ staff.email }}">
                    Upravit
                 </a>
                 
-                <form method="POST" action="{{ url_for('categories.category_delete', category_id=cat.category_id) }}" style="display:inline;">
+                {% if staff.staff_id != current_user.staff_id %}
+                <form method="POST" action="{{ url_for('staff.staff_delete', staff_id=staff.staff_id) }}" style="display:inline;">
                     <button type="submit" class="btn btn-sm btn-danger delete-trigger ms-1">Smazat</button> 
                 </form>
+                {% endif %}
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="4">Žádné kategorie.</td></tr>
+        <tr><td colspan="5">Žádní zaměstnanci.</td></tr>
         {% endfor %}
     </tbody>
 </table>
@@ -84,7 +78,7 @@ $(document).ready(function() {
         e.preventDefault();
         
         var url = $(this).attr('href');
-        var title = $(this).data('title') || 'Kategorie';
+        var title = $(this).data('title') || 'Zaměstnanec';
         var modal = $('#universalModal');
         var modalBody = $('#universalModalBody');
         
