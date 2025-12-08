@@ -1,0 +1,98 @@
+<div class="p-4 bg-light border-bottom border-start border-end rounded-bottom shadow-inset">
+    
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h4 class="text-primary mb-1">{{ customer.first_name }} {{ customer.last_name }}</h4>
+            <div class="text-muted">
+                <i class="bi bi-envelope-fill me-1"></i> {{ customer.user.email if customer.user else 'Není přiřazen email' }} 
+                <span class="mx-2 text-secondary">|</span> 
+                <i class="bi bi-calendar-event-fill me-1"></i> {{ customer.date_of_birth.strftime('%d.%m.%Y') if customer.date_of_birth else 'Neznámé datum narození' }}
+            </div>
+        </div>
+        <div>
+            <a href="{{ url_for('customers.customer_edit', customer_id=customer.customer_id) }}" 
+               class="btn btn-sm btn-outline-primary modal-trigger"
+               data-title="Upravit zákazníka: {{ customer.first_name }} {{ customer.last_name }}">
+                <i class="bi bi-pencil"></i> Upravit údaje
+            </a>
+        </div>
+    </div>
+
+    <hr class="text-secondary opacity-25">
+
+    <div class="row">
+        <div class="col-md-4">
+            <h6 class="text-uppercase text-secondary small fw-bold mb-3 ls-1">Uložené adresy</h6>
+            {% if customer.addresses %}
+                <ul class="list-group list-group-flush bg-transparent">
+                {% for addr in customer.addresses %}
+                    <li class="list-group-item bg-transparent px-0 py-2 border-bottom border-secondary border-opacity-10">
+                        <div class="d-flex align-items-start">
+                            <i class="bi bi-geo-alt-fill text-danger mt-1 me-2"></i>
+                            <div>
+                                <strong>{{ addr.street }}</strong><br>
+                                {{ addr.zip_code }} {{ addr.city }}
+                                {% if addr.is_billing %}
+                                    <div class="mt-1"><span class="badge bg-secondary">Fakturační</span></div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <div class="alert alert-light border text-muted small fst-italic">
+                    <i class="bi bi-info-circle me-1"></i> Žádné adresy v databázi.
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-8">
+            <h6 class="text-uppercase text-secondary small fw-bold mb-3 ls-1">Historie objednávek ({{ customer.orders|length }})</h6>
+            
+            {% if customer.orders %}
+            <div class="table-responsive rounded border bg-white">
+                <table class="table table-sm table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">ID</th>
+                            <th>Datum</th>
+                            <th>Status</th>
+                            <th>Částka</th>
+                            <th class="text-end pe-3">Akce</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in customer.orders|sort(attribute='order_date', reverse=True) %}
+                        <tr>
+                            <td class="ps-3 fw-bold text-primary">#{{ order.order_id }}</td>
+                            <td>{{ order.order_date.strftime('%d.%m.%Y') }}</td>
+                            <td>
+                                <span class="badge bg-light text-dark border">{{ order.status.status_name }}</span>
+                            </td>
+                            <td class="fw-bold">{{ order.total_amount }} Kč</td>
+                            <td class="text-end pe-3">
+                                <a href="{{ url_for('orders.order_modal_content', order_id=order.order_id) }}" 
+                                   class="btn btn-outline-secondary btn-sm py-0 modal-trigger" 
+                                   data-title="Detail objednávky #{{ order.order_id }}"
+                                   style="font-size: 0.8rem;">
+                                    Detail
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+                <div class="alert alert-light border text-muted small fst-italic">
+                    <i class="bi bi-bag-x me-1"></i> Tento zákazník zatím nic neobjednal.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .ls-1 { letter-spacing: 1px; }
+</style>

@@ -9,6 +9,7 @@ from logging.handlers import TimedRotatingFileHandler
 from flask import Flask, render_template
 
 
+
 db = SQLAlchemy()
 login_manager = LoginManager()
 
@@ -26,19 +27,23 @@ def create_app():
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 
+    basedir = os.path.abspath(os.path.dirname(__file__))
+    app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'static/uploads/products') 
+    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MB limit
+
+
     if not os.path.exists('logs'):
         os.mkdir('logs')
         
-    # Rotace logů každý den o půlnoci
-    file_handler = TimedRotatingFileHandler('logs/bds_app.log', when='midnight', interval=1, backupCount=30)
+    # Logy o půlnoci (snad)
+    file_handler = TimedRotatingFileHandler('logs/bds.log', when='midnight', interval=1, backupCount=30)
     file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'))
     file_handler.setLevel(logging.INFO)
     
     app.logger.addHandler(file_handler)
     app.logger.setLevel(logging.INFO)
-    app.logger.info('Aplikace BDS startuje...')
 
-    # Propojení databáze s aplikací
+
     db.init_app(app)
 
     login_manager.init_app(app)
@@ -53,8 +58,21 @@ def create_app():
     # Blueprinty
     from app.blueprints.auth import auth_bp
     app.register_blueprint(auth_bp)
-    
 
+    from app.blueprints.products import products_bp
+    app.register_blueprint(products_bp)
+    
+    from app.blueprints.orders import orders_bp
+    app.register_blueprint(orders_bp)
+
+    from app.blueprints.customers import customers_bp
+    app.register_blueprint(customers_bp)
+
+    from app.blueprints.categories import categories_bp
+    app.register_blueprint(categories_bp)
+
+    from app.blueprints.staff import staff_bp
+    app.register_blueprint(staff_bp)
     
     @app.route('/')
     def index():
@@ -65,7 +83,6 @@ def create_app():
         except Exception as e:
             db_version = f"Chyba: {e}"
             
-        # TADY je ta změna - místo stringu vracíme šablonu
         return render_template('index.html', db_version=db_version)
 
     return app

@@ -1,0 +1,89 @@
+<form method="POST" action="{{ url_for('orders.order_create') }}" id="create-order-form">
+    
+    <div id="create-order-messages"></div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3 position-relative">
+                <label class="form-label fw-bold">1. Zákazník</label>
+                <input type="text" class="form-control" id="customer-search" placeholder="Hledat jméno..." autocomplete="off">
+                <input type="hidden" name="customer_id" id="customer_id" required>
+                
+                <div id="customer-suggestions" class="list-group position-absolute w-100 shadow mt-1 suggestions-dropdown" style="display: none;"></div>
+                
+                <div id="selected-customer-display" class="alert alert-success mt-2 py-2 d-none d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-person-check-fill"></i> <strong id="selected-customer-name"></strong></span>
+                    <button type="button" class="btn-close btn-sm" id="clear-customer"></button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label class="form-label fw-bold">2. Doprava</label>
+                <select name="shipping_method_id" class="form-select" required>
+                    <option value="">-- Vyberte --</option>
+                    {% for method in shipping_methods %}
+                        <option value="{{ method.shipping_method_id }}">{{ method.name }} ({{ method.price }} Kč)</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <label class="form-label fw-bold mb-0">3. Produkty</label>
+            <button type="button" class="btn btn-sm btn-success" id="add-row-btn"><i class="bi bi-plus-lg"></i> Přidat řádek</button>
+        </div>
+        
+        <div class="border rounded" style="min-height: 250px; overflow: visible;">
+            <table class="table table-sm table-striped mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 40%">Produkt</th>
+                        <th style="width: 30%">Varianta</th>
+                        <th style="width: 15%">Ks</th>
+                        <th style="width: 15%">Cena</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="products-tbody">
+                    </tbody>
+            </table>
+            <div id="empty-cart-msg" class="text-center p-3 text-muted">
+                Zatím žádné produkty. Klikněte na "Přidat řádek".
+            </div>
+        </div>
+    </div>
+
+    <div class="text-end border-top pt-3">
+        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Zrušit</button>
+        <button type="submit" class="btn btn-primary">Vytvořit objednávku</button>
+    </div>
+</form>
+
+<template id="product-row-template">
+    <tr>
+        <td class="position-relative" style="overflow: visible;"> 
+            <input type="text" class="form-control form-control-sm product-search" placeholder="Hledat..." autocomplete="off">
+            <div class="list-group position-absolute w-100 shadow mt-1 suggestions-dropdown suggestions-box" style="display: none; z-index: 1050;"></div>
+        </td>
+        <td>
+            <select name="variant_id[]" class="form-select form-select-sm variant-select" disabled required>
+                <option value="">-</option>
+            </select>
+        </td>
+        <td>
+            <input type="number" name="quantity[]" class="form-control form-control-sm quantity-input" value="1" min="1" required>
+        </td>
+        <td>
+            <input type="text" class="form-control-plaintext form-control-sm price-display text-end" readonly value="0 Kč">
+        </td>
+        <td class="text-center">
+            <button type="button" class="btn btn-link text-danger p-0 remove-row">X</button>
+        </td>
+    </tr>
+</template>

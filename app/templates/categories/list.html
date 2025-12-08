@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Seznam Kategorií{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Seznam kategorií</h2>
+
+<form method="GET" class="row g-3 align-items-center mb-4">
+    <div class="col-auto">
+        <input type="text" name="search" class="form-control" placeholder="Hledat název..." value="{{ search_term if search_term }}">
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Hledat</button>
+        <a href="{{ url_for('categories.categories_list') }}" class="btn btn-secondary">Zrušit</a>
+    </div>
+</form>
+
+<a href="{{ url_for('categories.category_add') }}" class="btn btn-success mb-3 modal-trigger" data-title="Přidat novou kategorii">
+    + Nová kategorie
+</a>
+
+<table class="table table-hover align-middle shadow-sm">
+    <thead class="table-light">
+        <tr>
+            <th>ID</th>
+            <th>Název</th>
+            <th>Nadřazená kategorie (Parent)</th>
+            <th>Akce</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cat in categories %}
+        <tr>
+            <td>{{ cat.category_id }}</td>
+            <td class="fw-bold">{{ cat.name }}</td>
+            <td>
+                {% if cat.parent_id %}
+                    <span class="badge bg-secondary">ID: {{ cat.parent_id }}</span>
+                {% else %}
+                    <span class="text-muted small">- Hlavní -</span>
+                {% endif %}
+            </td>
+            <td>
+                <a href="{{ url_for('categories.category_edit', category_id=cat.category_id) }}" 
+                   class="btn btn-sm btn-info modal-trigger"
+                   data-title="Upravit kategorii: {{ cat.name }}">
+                   Upravit
+                </a>
+                
+                <form method="POST" action="{{ url_for('categories.category_delete', category_id=cat.category_id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-danger delete-trigger ms-1">Smazat</button> 
+                </form>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">Žádné kategorie.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="modal fade" id="universalModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Načítám...</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="universalModalBody">
+                <div class="text-center my-5"><div class="spinner-border text-primary"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script> 
+<script>
+$(document).ready(function() {
+    $(document).on('click', '.modal-trigger', function(e) {
+        if (e.which !== 1 && e.which !== 0) return;
+        if (e.ctrlKey || e.metaKey) return;
+        e.preventDefault();
+        
+        var url = $(this).attr('href');
+        var title = $(this).data('title') || 'Kategorie';
+        var modal = $('#universalModal');
+        var modalBody = $('#universalModalBody');
+        
+        modal.find('.modal-title').text(title);
+        modalBody.html('<div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>');
+        modal.modal('show');
+        
+        $.ajax({
+            url: url,
+            type: 'GET',
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            success: function(response) {
+                modalBody.html(response);
+            },
+            error: function() {
+                modalBody.html('<div class="alert alert-danger">Chyba načítání.</div>');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

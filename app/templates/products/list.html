@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Seznam Produktů{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+<style>
+    .table thead th {
+        vertical-align: middle !important;
+        border-bottom-width: 2px;
+    }
+
+    .sortable-th {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .sortable-th a {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #212529;
+        text-decoration: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+        line-height: 1.2;
+        margin: 0;
+    }
+
+    .sortable-th a:hover {
+        background-color: #e9ecef;
+        color: #0d6efd;
+    }
+
+    .sort-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+    }
+    
+    .sort-icon i {
+        line-height: 0;
+        font-size: 0.85rem;
+        position: relative;
+        top: 1px;
+    }
+</style>
+
+<h2 class="mb-4">Seznam produktů</h2>
+
+<form method="GET" class="row g-3 align-items-center mb-4">
+    <div class="col-auto">
+        <input type="text" name="search" class="form-control" placeholder="Hledat název nebo ID..." value="{{ search_term if search_term }}">
+    </div>
+    <div class="col-auto">
+        <select name="category_id" class="form-select">
+            <option value="">-- Všechny kategorie --</option>
+            {% for category in categories %}
+            <option value="{{ category.category_id }}" {% if selected_category_id == category.category_id %}selected{% endif %}>{{ category.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Filtrovat</button>
+        <a href="{{ url_for('products.products_list') }}" class="btn btn-secondary">Zrušit</a>
+    </div>
+</form>
+
+<a href="{{ url_for('products.product_add') }}" class="btn btn-success mb-3 modal-trigger" data-title="Přidat nový produkt">
+    Přidat nový produkt
+</a>
+
+{% macro sort_link(column, title) %}
+    {% set next_order = 'asc' if sort_by == column and sort_order == 'desc' else 'desc' %}
+    
+    <div class="sortable-th">
+        <a href="{{ url_for('products.products_list', sort_by=column, sort_order=next_order, search=search_term, category_id=selected_category_id) }}" 
+           title="Seřadit podle {{ title }}">
+            
+            <span class="fw-bold">{{ title }}</span>
+            
+            <span class="sort-icon">
+                {% if sort_by == column %}
+                    {% if sort_order == 'asc' %}
+                        <i class="bi bi-caret-up-fill text-primary"></i>
+                    {% else %}
+                        <i class="bi bi-caret-down-fill text-primary"></i>
+                    {% endif %}
+                {% else %}
+                    <i class="bi bi-arrow-down-up text-secondary fs-6" style="opacity: 0.5"></i>
+                {% endif %}
+            </span>
+        </a>
+    </div>
+{% endmacro %}
+
+<table class="table table-hover align-middle shadow-sm">
+    <thead class="table-light border-bottom border-2">
+        <tr>
+            <th style="width: 50px;"></th>
+            <th style="width: 80px;">Obrázek</th> 
+            
+            <th style="min-width: 90px;">{{ sort_link('product_id', 'ID') }}</th>
+            <th>{{ sort_link('name', 'Název') }}</th>
+            <th>{{ sort_link('category_name', 'Kategorie') }}</th>
+            <th style="min-width: 130px;">{{ sort_link('base_price', 'Cena') }}</th>
+            
+            <th>Akce</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for product in products %}
+        <tr>
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-secondary toggle-details" 
+                        data-product-id="{{ product.product_id }}"
+                        type="button">+</button>
+            </td>
+            <td>
+                <img src="{{ product.primary_image_url }}" alt="Img" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">
+            </td>
+            <td>{{ product.product_id }}</td>
+            <td><span class="fw-bold">{{ product.name }}</span></td>
+            <td><span class="badge bg-light text-dark border">{{ product.category.name if product.category else 'Neznámá' }}</span></td> 
+            <td class="fw-bold text-success">{{ product.base_price }} Kč</td>
+            <td>
+                <a href="{{ url_for('products.product_edit', product_id=product.product_id) }}" 
+                   class="btn btn-sm btn-info modal-trigger"
+                   data-title="Upravit produkt: {{ product.name }}">Upravit</a> 
+                
+                <form method="POST" action="{{ url_for('products.product_delete', product_id=product.product_id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-danger delete-trigger">Smazat</button> 
+                </form>
+            </td>
+        </tr>
+        
+        <tr id="detail-row-{{ product.product_id }}" class="d-none bg-light">
+            <td colspan="7" class="p-0 border-0">
+                <div id="detail-content-{{ product.product_id }}" class="collapse-content"></div>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7">Žádné produkty.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="modal fade" id="universalModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Načítám...</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="universalModalBody">
+                <div class="text-center my-5"><div class="spinner-border text-primary"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script> 
+<script>
+$(document).ready(function() {
+    $('.toggle-details').on('click', function() {
+        var btn = $(this);
+        var productId = btn.data('product-id');
+        var detailRow = $('#detail-row-' + productId);
+        var contentDiv = $('#detail-content-' + productId);
+        
+        if (!detailRow.hasClass('d-none')) {
+            detailRow.addClass('d-none');
+            btn.text('+').removeClass('btn-secondary').addClass('btn-outline-secondary');
+            return;
+        }
+        btn.text('-').removeClass('btn-outline-secondary').addClass('btn-secondary');
+        detailRow.removeClass('d-none');
+        if (contentDiv.is(':empty')) {
+            contentDiv.html('<div class="p-4 text-center"><div class="spinner-border spinner-border-sm text-muted"></div> Načítám detaily...</div>');
+            var url = "{{ url_for('products.product_detail_content', product_id=0) }}".replace('0', productId);
+            $.ajax({ url: url, type: 'GET', success: function(r) { contentDiv.html(r); }, error: function() { contentDiv.html('Chyba.'); }});
+        }
+    });
+
+    $(document).on('click', '.modal-trigger', function(e) {
+        if (e.which !== 1 && e.which !== 0) return;
+        if (e.ctrlKey || e.metaKey) return;
+        e.preventDefault();
+        var url = $(this).attr('href');
+        var title = $(this).data('title') || 'Informace';
+        var modal = $('#universalModal');
+        var modalBody = $('#universalModalBody');
+        modal.find('.modal-title').text(title);
+        modalBody.html('<div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>');
+        modal.modal('show');
+        $.ajax({ url: url, type: 'GET', headers: {'X-Requested-With': 'XMLHttpRequest'}, success: function(r) { modalBody.html(r); }, error: function() { modalBody.html('<div class="alert alert-danger">Chyba.</div>'); }});
+    });
+});
+</script>
+{% endblock %}

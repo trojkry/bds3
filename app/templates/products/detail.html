@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Detail produktu: {{ product.name }}{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('main.products_list') }}" class="btn btn-secondary mb-3">Zpět na seznam</a>
+
+<h2 class="mb-4">Detail produktu: {{ product.name }}</h2>
+
+<div class="mb-4">
+    <img src="{{ product.primary_image_url }}" alt="Hlavní obrázek" class="img-fluid" style="max-height: 250px; border-radius: 8px;">
+</div>
+
+
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white">
+        Základní údaje
+    </div>
+    <ul class="list-group list-group-flush">
+        <li class="list-group-item"><strong>ID:</strong> {{ product.product_id }}</li>
+        <li class="list-group-item"><strong>Název:</strong> {{ product.name }}</li>
+        <li class="list-group-item"><strong>Kategorie:</strong> {{ product.category.name if product.category else 'Není přiřazena' }}</li>
+        <li class="list-group-item"><strong>Základní cena:</strong> {{ product.base_price }}</li>
+        <li class="list-group-item"><strong>Popis:</strong> {{ product.description }}</li>
+        <li class="list-group-item">
+            <a href="{{ url_for('main.product_edit', product_id=product.product_id) }}" class="btn btn-sm btn-info">Upravit produkt</a>
+        </li>
+    </ul>
+</div>
+
+<div class="card">
+    <div class="card-header bg-dark text-white">
+        Varianty produktu
+    </div>
+    <div class="card-body">
+        {% if product.variants %}
+        <table class="table table-sm table-bordered">
+            <thead>
+                <tr>
+                    <th>SKU</th>
+                    <th>Atribut</th>
+                    <th>Příplatek</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for variant in product.variants %}
+                <tr>
+                    <td>{{ variant.sku }}</td>
+                    <td>{{ variant.attribute_value }}</td>
+                    <td>+ {{ variant.additional_price }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>Tento produkt nemá žádné varianty.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

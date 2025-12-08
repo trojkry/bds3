@@ -1,0 +1,82 @@
+<div class="row">
+    <div class="col-md-6">
+        <h5 class="text-primary">Zákazník</h5>
+        <ul class="list-unstyled">
+            <li><strong>Jméno:</strong> {{ order.customer.first_name }} {{ order.customer.last_name }}</li>
+            <li><strong>Email:</strong> {{ order.customer.user.email if order.customer.user else 'N/A' }}</li>
+            <li><strong>Telefon:</strong> {{ order.customer.phone_decrypted if order.customer.phone_decrypted else 'Neznámý (Šifrováno)' }}</li>
+            <li class="mt-2"><strong>Adresy:</strong>
+                {% if order.customer.addresses %}
+                    <ul class="ps-3">
+                    {% for addr in order.customer.addresses %}
+                        <li>{{ addr.street }}, {{ addr.city }} {{ addr.zip_code }}</li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    <span class="text-muted">Žádná adresa</span>
+                {% endif %}
+            </li>
+        </ul>
+    </div>
+
+    <div class="col-md-6">
+        <h5 class="text-primary">Stav objednávky</h5>
+        
+        <div id="modal-status-message"></div>
+
+        <form id="update-status-form" method="POST" action="{{ url_for('orders.order_update_status', order_id=order.order_id) }}">
+            <div class="mb-2">
+                Aktuální: <strong id="current-status-text">{{ order.status.status_name }}</strong>
+            </div>
+            <div class="input-group mb-3">
+                <select name="status_id" class="form-select form-select-sm" required>
+                    {% for status in all_statuses %}
+                        <option value="{{ status.status_id }}" {% if status.status_id == order.status_id %}selected{% endif %}>
+                            {{ status.status_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-warning btn-sm">Změnit</button>
+            </div>
+        </form>
+
+        <ul class="list-unstyled mt-3">
+            <li><strong>Datum:</strong> {{ order.order_date.strftime('%d.%m.%Y') }}</li>
+            <li><strong>Doprava:</strong> {{ order.shipping_method.name }}</li>
+            <li><strong>Zaplaceno:</strong> 
+                {% if order.is_paid %}
+                    <span class="badge bg-success">ANO</span>
+                {% else %}
+                    <span class="badge bg-danger">NE</span>
+                {% endif %}
+            </li>
+            <li><strong>Celkem:</strong> <span class="fs-5 fw-bold">{{ order.total_amount }} Kč</span></li>
+        </ul>
+    </div>
+</div>
+
+<hr>
+
+<h5>Položky objednávky</h5>
+<table class="table table-sm table-striped">
+    <thead class="table-light">
+        <tr>
+            <th>Produkt</th>
+            <th>Varianta</th>
+            <th class="text-end">Množství</th>
+            <th class="text-end">Cena/ks</th>
+            <th class="text-end">Celkem</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in order.items %}
+        <tr>
+            <td>{{ item.variant.product.name }}</td>
+            <td>{{ item.variant.attribute_value }} <small class="text-muted">({{ item.variant.sku }})</small></td>
+            <td class="text-end">{{ item.quantity }}</td>
+            <td class="text-end">{{ item.unit_price }} Kč</td>
+            <td class="text-end">{{ item.quantity * item.unit_price }} Kč</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
