@@ -30,7 +30,6 @@ def reset_search_db():
 # --- VYHLEDÁVÁNÍ (Search Injection) ---
 @sqli_bp.route('/sql-injection-demo', methods=['GET', 'POST'])
 def index():
-    # Proměnné pro šablonu
     result_data = None
     result_headers = []
     executed_sql = ""

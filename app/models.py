@@ -57,7 +57,6 @@ class CustomerProfile(db.Model):
         func.pgp_sym_decrypt(phone_number_enc, 'key', type_=db.String)
     )
     
-    # Relace
     user = relationship('UserAccount', backref='profile')
     orders = relationship('Order', backref='customer', lazy=True)
     addresses = relationship('Address', backref='customer', lazy=True)
@@ -116,6 +115,20 @@ class ProductVariant(db.Model):
     attribute_value = db.Column(db.String(100), nullable=False)
     additional_price = db.Column(db.Numeric(10, 2))
 
+    
+    inventory_items = relationship('Inventory', backref='variant', cascade="all, delete-orphan")
+    cart_items = relationship('CartItem', backref='variant', cascade="all, delete-orphan")
+    order_items = relationship('OrderItem', back_populates='variant', cascade="all, delete-orphan")
+
+class Inventory(db.Model):
+    __tablename__ = 'inventory'
+    __table_args__ = {'schema': 'bds'}
+
+    inventory_id = db.Column(db.Integer, primary_key=True)
+    variant_id = db.Column(db.Integer, db.ForeignKey('bds.product_variant.variant_id'), nullable=False)
+    quantity = db.Column(db.Integer, default=0, nullable=False)
+    location_code = db.Column(db.String(20))
+
 class ProductImage(db.Model):
     __tablename__ = 'product_image'
     __table_args__ = {'schema': 'bds'}
@@ -169,7 +182,7 @@ class OrderItem(db.Model):
     quantity = db.Column(db.Integer, nullable=False)
     unit_price = db.Column(db.Numeric(10, 2), nullable=False)
     
-    variant = relationship('ProductVariant')
+    variant = relationship('ProductVariant', back_populates='order_items')
 
 class PaymentTransaction(db.Model):
     __tablename__ = 'payment_transaction'

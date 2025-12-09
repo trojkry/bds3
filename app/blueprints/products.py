@@ -21,7 +21,9 @@ def process_variants(product, form):
     
     delete_ids = form.getlist('delete_variant[]')
     if delete_ids:
-        ProductVariant.query.filter(ProductVariant.variant_id.in_(delete_ids)).delete(synchronize_session=False)
+        variants_to_delete = ProductVariant.query.filter(ProductVariant.variant_id.in_(delete_ids)).all()
+        for v in variants_to_delete:
+            db.session.delete(v)
 
     for v_id, attr, sku, price in zip(variant_ids, attrs, skus, prices):
         if v_id in delete_ids:
