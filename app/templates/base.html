@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}BDS{% endblock %}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         body { padding-top: 20px; }
@@ -15,7 +15,7 @@
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('index') }}">BDS E-shop</a>
+            <a class="navbar-brand" href="{{ url_for('index') }}">BDS</a>
             
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav me-auto">
@@ -36,10 +36,22 @@
                             <li class="nav-item">
                                 <a class="nav-link" href="{{ url_for('staff.staff_list') }}">Zaměstnanci</a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-danger" href="{{ url_for('sqli.index') }}">
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-danger" href="#" role="button" data-bs-toggle="dropdown">
                                     <i class="bi bi-bug-fill"></i> SQLi Demo
                                 </a>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item" href="{{ url_for('sqli.index') }}">
+                                            1. Vyhledávání (Search)
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{{ url_for('sqli.login_bypass') }}">
+                                            2. Login Bypass (Auth)
+                                        </a>
+                                    </li>
+                                </ul>
                             </li>
                         {% endif %}
                         {% endif %}
