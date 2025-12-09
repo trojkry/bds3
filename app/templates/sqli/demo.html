@@ -32,14 +32,14 @@
                         <input type="text" name="search" id="searchInput" class="form-control" 
                                value="{{ search_query }}" placeholder="admin" autocomplete="off">
                     </div>
-                    <button type="submit" class="btn btn-danger w-100">
+                    <button type="submit" name="btn_unsafe" class="btn btn-danger w-100">
                         Provést dotaz (Simulovat)
                     </button>
                 </form>
 
                 <hr class="my-4">
                 
-<h6 class="mb-3">Vyzkoušejte útoky:</h6>
+                <h6 class="mb-3">Vyzkoušejte útoky:</h6>
                 <div class="list-group list-group-flush small" style="max-height: 400px; overflow-y: auto;">
                     <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center attack-trigger" data-value="admin">
                         Běžné hledání
@@ -183,7 +183,7 @@
                         </div>
                     {% else %}
                         <div class="alert alert-light border border-success text-success">
-                            <i class="bi bi-shield-check me-2"></i> Žádná shoda (útok byl neutralizován nebo tabulka neexistuje).
+                            <i class="bi bi-shield-check me-2"></i> Žádná shoda (nebo dotaz nebyl spuštěn).
                         </div>
                     {% endif %}
                 {% else %}

@@ -14,6 +14,7 @@ def reset_search_db():
         username VARCHAR(100),
         secret_data VARCHAR(100)
     );
+    GRANT SELECT, INSERT, UPDATE, DELETE ON bds.dummy_sqli TO "bds-app";
     INSERT INTO bds.dummy_sqli (username, secret_data) VALUES 
         ('admin', 'HesloJe1234'),
         ('pepa', 'MojeTajemstvi'),
@@ -30,17 +31,15 @@ def reset_search_db():
 # --- VYHLEDÁVÁNÍ (Search Injection) ---
 @sqli_bp.route('/sql-injection-demo', methods=['GET', 'POST'])
 def index():
-    result_data = None
-    result_headers = []
+    unsafe_result = None
+    safe_result = None
     executed_sql = ""
     error_msg = None
     
-    unsafe_query = request.form.get('unsafe_search', '')
-    safe_query = request.form.get('safe_search', '')
-    
-    mode = None 
+    search_input = request.form.get('search', '') 
+    if not search_input:
+        search_input = request.form.get('unsafe_search', '')
 
-    # --- RESET DB ---
     if request.args.get('reset') == 'true':
         reset_search_db()
         return redirect(url_for('sqli.index'))
@@ -50,43 +49,35 @@ def index():
 
     if request.method == 'POST':
         
-        if 'btn_unsafe' in request.form:
-            mode = 'unsafe'
-            raw_sql = f"SELECT * FROM bds.dummy_sqli WHERE username = '{unsafe_query}'"
-            executed_sql = raw_sql
-            
-            try:
-                result_proxy = db.session.execute(text(raw_sql))
-                if result_proxy.returns_rows:
-                    result_data = result_proxy.fetchall()
-                    result_headers = result_proxy.keys()
-                
-                db.session.commit()
-            except Exception as e:
-                db.session.rollback()
-                error_msg = str(e)
+        raw_sql = f"SELECT * FROM bds.dummy_sqli WHERE username = '{search_input}'"
+        executed_sql = raw_sql
+        
+        try:
+            result_proxy = db.session.execute(text(raw_sql))
+            if result_proxy.returns_rows:
+                unsafe_result = result_proxy.fetchall()
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            error_msg = str(e)
 
-        elif 'btn_safe' in request.form:
-            mode = 'safe'
-            safe_sql = "SELECT id, username, '****** (Skryto)' as secret_data FROM bds.dummy_sqli WHERE username = :val"
-            
-            try:
-                result_proxy = db.session.execute(text(safe_sql), {'val': safe_query})
-                if result_proxy.returns_rows:
-                    result_data = result_proxy.fetchall()
-                    result_headers = result_proxy.keys()
-            except Exception:
-                db.session.rollback()
-                pass
+        safe_sql = "SELECT id, username, '****** (Skryto)' as secret_data FROM bds.dummy_sqli WHERE username = :val"
+        
+        try:
+            result_proxy = db.session.execute(text(safe_sql), {'val': search_input})
+            if result_proxy.returns_rows:
+                safe_result = result_proxy.fetchall()
+        except Exception:
+            db.session.rollback()
+            pass
 
     return render_template('sqli/demo.html', 
-                           result_data=result_data,
-                           result_headers=result_headers,
+                           unsafe_result=unsafe_result,
+                           safe_result=safe_result,     
                            executed_sql=executed_sql,
-                           unsafe_query=unsafe_query,
-                           safe_query=safe_query,
+                           search_query=search_input,   
                            error_msg=error_msg,
-                           mode=mode)
+                           is_post=(request.method == 'POST'))
 
 
 # --- Login Bypass ---
@@ -100,6 +91,7 @@ def login_bypass():
         password VARCHAR(100),
         role VARCHAR(50)
     );
+    GRANT SELECT, INSERT, UPDATE, DELETE ON bds.dummy_users TO "bds-app";
     INSERT INTO bds.dummy_users (username, password, role) VALUES 
         ('admin', 'SuperTajneHeslo123', 'Administrátor'),
         ('pepa', '12345', 'Uživatel');
@@ -128,47 +120,26 @@ def login_bypass():
     if request.method == 'POST':
         if 'btn_unsafe' in request.form:
             raw_sql = f"SELECT * FROM bds.dummy_users WHERE username = '{username_input}' AND password = '{password_input}'"
-            
-            result_state = {
-                'sql': raw_sql,
-                'success': False,
-                'user': None,
-                'role': None,
-                'error': None
-            }
-            
+            result_state = {'sql': raw_sql, 'success': False, 'user': None, 'role': None, 'error': None}
             try:
                 result_proxy = db.session.execute(text(raw_sql))
                 user_row = result_proxy.fetchone()
-                
                 if user_row:
                     result_state['success'] = True
                     result_state['user'] = user_row[1]
                     result_state['role'] = user_row[3] 
-                
                 db.session.commit()
             except Exception as e:
                 db.session.rollback()
                 result_state['error'] = str(e)
-            
             session['unsafe_res'] = result_state
 
         elif 'btn_safe' in request.form:
             safe_sql = "SELECT * FROM bds.dummy_users WHERE username = :u AND password = :p"
-            
-            result_state = {
-                'sql': "SELECT * FROM users WHERE username = :u AND password = :p", 
-                'real_param_u': username_input,
-                'success': False,
-                'user': None,
-                'role': None,
-                'error': None
-            }
-            
+            result_state = {'sql': "SELECT ... WHERE username = :u ...", 'real_param_u': username_input, 'success': False, 'user': None, 'role': None, 'error': None}
             try:
                 result_proxy = db.session.execute(text(safe_sql), {'u': username_input, 'p': password_input})
                 user_row = result_proxy.fetchone()
-                
                 if user_row:
                     result_state['success'] = True
                     result_state['user'] = user_row[1]
@@ -176,7 +147,6 @@ def login_bypass():
             except Exception as e:
                 db.session.rollback()
                 result_state['error'] = str(e)
-            
             session['safe_res'] = result_state
 
     return render_template('sqli/login.html', 
