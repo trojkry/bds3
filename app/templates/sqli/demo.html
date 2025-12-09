@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}SQL Injection Demo{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="text-danger mb-1">
+                <i class="bi bi-shield-exclamation"></i> SQL Injection Simulace
+            </h2>
+            <p class="text-muted mb-0">
+                Data se načítají z tabulky <code>dummy_sqli</code>.
+            </p>
+        </div>
+        <a href="{{ url_for('sqli.index', reset='true') }}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-counterclockwise"></i> Obnovit databázi
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white">
+                Vyhledávání uživatele
+            </div>
+            <div class="card-body">
+                <form method="POST" id="sqliForm">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Zadejte uživatelské jméno:</label>
+                        <input type="text" name="search" id="searchInput" class="form-control" 
+                               value="{{ search_query }}" placeholder="admin" autocomplete="off">
+                    </div>
+                    <button type="submit" class="btn btn-danger w-100">
+                        Provést dotaz (Simulovat)
+                    </button>
+                </form>
+
+                <hr class="my-4">
+                
+<h6 class="mb-3">Vyzkoušejte útoky:</h6>
+                <div class="list-group list-group-flush small" style="max-height: 400px; overflow-y: auto;">
+                    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center attack-trigger" data-value="admin">
+                        Běžné hledání
+                        <code class="text-dark">admin</code>
+                    </button>
+                    
+                    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center attack-trigger" data-value="' OR '1'='1">
+                        Únik všech dat (1=1)
+                        <code class="text-danger">' OR '1'='1</code>
+                    </button>
+
+                    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center attack-trigger" 
+                            data-value="' UNION SELECT 1, current_user, current_database() --">
+                        Kdo jsem (User & DB)
+                        <code class="text-danger">UNION SELECT user...</code>
+                    </button>
+
+                    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center attack-trigger" 
+                            data-value="' UNION SELECT staff_id, email, password_hash FROM bds.staff_member --">
+                        Ukrást hesla zaměstnanců
+                        <code class="text-danger">UNION SELECT staff...</code>
+                    </button>
+
+                    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center attack-trigger" 
+                            data-value="' UNION SELECT 1, column_name, data_type FROM information_schema.columns WHERE table_name='user_account' --">
+                        Struktura 'user_account'
+                        <code class="text-danger">UNION SELECT columns...</code>
+                    </button>
+
+                    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center attack-trigger" 
+                            data-value="' AND 1=CAST(version() AS INTEGER) --">
+                        Error Based (Verze v chybě)
+                        <code class="text-danger">CAST(version AS INT)</code>
+                    </button>
+
+                    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center attack-trigger" 
+                            data-value="admin'; SELECT pg_sleep(5); --">
+                        DoS (Zpomalení 5s)
+                        <code class="text-danger">pg_sleep(5)</code>
+                    </button>
+
+                    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center attack-trigger" data-value="'; DROP TABLE bds.dummy_sqli; --">
+                        Smazat tabulku (Drop)
+                        <code class="text-danger">'; DROP TABLE...</code>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        
+        <div class="card border-danger mb-4 shadow-sm">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-x-circle-fill me-2"></i> Nebezpečný dotaz (Raw SQL)
+            </div>
+            <div class="card-body">
+                {% if is_post %}
+                    <p class="small text-muted mb-2">Aplikace sestavila tento dotaz:</p>
+                    <div class="alert alert-secondary font-monospace p-3 mb-3" style="background-color: #e9ecef; word-break: break-all;">
+                        {{ executed_sql }}
+                    </div>
+
+                    {% if error_msg %}
+                        <div class="alert alert-warning d-flex align-items-center">
+                            <i class="bi bi-exclamation-triangle-fill me-2 fs-4"></i>
+                            <div>
+                                <strong>Chyba DB:</strong><br>
+                                {{ error_msg }}
+                                {% if "does not exist" in error_msg or "neexistuje" in error_msg %}
+                                    <div class="mt-2 fw-bold text-danger">TABULKA BYLA ÚSPĚŠNĚ SMAZÁNA! (Útok fungoval)</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if unsafe_result %}
+                        <h6 class="fw-bold">Výsledky:</h6>
+                        <div class="border rounded" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-bordered border-danger mb-0">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th style="width: 50px;">id</th>
+                                        <th>username</th>
+                                        <th>secret_data</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in unsafe_result %}
+                                    <tr>
+                                        <td>{{ row[0] }}</td>
+                                        <td>{{ row[1] }}</td>
+                                        <td class="text-danger fw-bold">{{ row[2] }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% elif not error_msg %}
+                        <div class="alert alert-light border">
+                            <i class="bi bi-info-circle me-2"></i> Příkaz proběhl, ale nevrátil žádná data.
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <p class="text-muted text-center my-4">Zadejte vstup vlevo a odešlete formulář.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card border-success shadow-sm">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-check-circle-fill me-2"></i> Bezpečný dotaz (Parameterized)
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-3">
+                    Zde se používají parametry. Vstup <code class="text-danger">{{ search_query if search_query else '...' }}</code> se bere jako řetězec.
+                </p>
+
+                {% if is_post %}
+                    {% if safe_result %}
+                        <h6 class="fw-bold">Výsledky:</h6>
+                        <div class="border rounded" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-bordered border-success mb-0">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th style="width: 50px;">id</th>
+                                        <th>username</th>
+                                        <th>secret_data</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in safe_result %}
+                                    <tr>
+                                        <td>{{ row[0] }}</td>
+                                        <td>{{ row[1] }}</td>
+                                        <td>{{ row[2] }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-light border border-success text-success">
+                            <i class="bi bi-shield-check me-2"></i> Žádná shoda (útok byl neutralizován nebo tabulka neexistuje).
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <p class="text-muted text-center my-4">Čekám na vstup...</p>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const triggers = document.querySelectorAll('.attack-trigger');
+        const input = document.getElementById('searchInput');
+        
+        triggers.forEach(trigger => {
+            trigger.addEventListener('click', function() {
+                input.value = this.getAttribute('data-value');
+            });
+        });
+    });
+</script>
+{% endblock %}

