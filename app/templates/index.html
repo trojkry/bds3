@@ -2,13 +2,13 @@
 
 {% block content %}
 <div class="jumbotron mt-4">
-    <h1 class="display-4">Vítejte v BDS E-shopu</h1>
-    <p class="lead">Toto je demonstrační aplikace pro správu databáze.</p>
+    <h1 class="display-4">Vítejte v BDS</h1>
+    <p class="lead">Toto je aplikace pro správu databáze.</p>
     <hr class="my-4">
     
     {% if current_user.is_authenticated %}
         <p>Jste přihlášen jako <strong>{{ current_user.email }}</strong>.</p>
-        <a class="btn btn-primary btn-lg" href="#" role="button">Správa produktů</a>
+        <a class="btn btn-primary btn-lg" href="/products" role="button">Správa produktů</a>
     {% else %}
         <p>Pro přístup k datům se musíte přihlásit.</p>
         <a class="btn btn-primary btn-lg" href="{{ url_for('auth.login') }}" role="button">Přejít na přihlášení</a>

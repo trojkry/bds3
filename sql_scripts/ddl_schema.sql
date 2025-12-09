@@ -242,10 +242,12 @@ $$;
 GRANT USAGE ON SCHEMA bds TO "bds-app";
 GRANT USAGE ON SCHEMA bds TO "bds-script";
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON bds.orders TO "bds-app";
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA bds TO "bds-app";
 GRANT SELECT, INSERT, UPDATE, DELETE ON bds.order_item TO "bds-app";
-GRANT SELECT ON bds.v_app_user_safe TO "bds-app";
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA bds TO "bds-app";
 
 GRANT SELECT ON bds.product TO "bds-script";
 GRANT SELECT ON bds.category TO "bds-script";
+
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA bds TO "bds-app";
+GRANT EXECUTE ON ALL PROCEDURES IN SCHEMA bds TO "bds-app";
