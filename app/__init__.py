@@ -8,41 +8,38 @@ import logging
 from logging.handlers import TimedRotatingFileHandler
 from flask import Flask, render_template
 
-
-
 db = SQLAlchemy()
 login_manager = LoginManager()
 
-def create_app():
+def create_app(test_config=None):
     
     load_dotenv()
     
     app = Flask(__name__)
     
-
     db_url = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
     
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url + "?options=-csearch_path%3Dbds"
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
+    if test_config:
+        app.config.update(test_config)
 
     basedir = os.path.abspath(os.path.dirname(__file__))
     app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'static/uploads/products') 
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MB limit
 
-
     if not os.path.exists('logs'):
         os.mkdir('logs')
         
-    # Logy o půlnoci (snad)
+    # Logy o půlnoci
     file_handler = TimedRotatingFileHandler('logs/bds.log', when='midnight', interval=1, backupCount=30)
     file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'))
     file_handler.setLevel(logging.INFO)
     
     app.logger.addHandler(file_handler)
     app.logger.setLevel(logging.INFO)
-
 
     db.init_app(app)
 
