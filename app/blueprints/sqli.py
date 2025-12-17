@@ -61,7 +61,7 @@ def index():
             db.session.rollback()
             error_msg = str(e)
 
-        safe_sql = "SELECT id, username, '****** (Skryto)' as secret_data FROM bds.dummy_sqli WHERE username = :val"
+        safe_sql = "SELECT id, username, secret_data FROM bds.dummy_sqli WHERE username = :val"
         
         try:
             result_proxy = db.session.execute(text(safe_sql), {'val': search_input})
