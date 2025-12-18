@@ -61,6 +61,12 @@
     </div>
 </form>
 
+<a href="{{ url_for('customers.customer_add') }}" 
+   class="btn btn-success mb-3 modal-trigger" 
+   data-title="Přidat nového zákazníka">
+    + Nový zákazník
+</a>
+
 {% macro sort_link(column, title) %}
     {% set next_order = 'asc' if sort_by == column and sort_order == 'desc' else 'desc' %}
     
@@ -219,30 +225,6 @@ $(document).ready(function() {
             },
             error: function() {
                 modalBody.html('<div class="alert alert-danger">Chyba při načítání dat.</div>');
-            }
-        });
-    });
-
-    $(document).on('submit', '#update-status-form', function(e) {
-        e.preventDefault();
-        var form = $(this);
-        var url = form.attr('action');
-        var data = form.serialize();
-        var messageDiv = $('#modal-status-message');
-
-        $.ajax({
-            url: url, type: 'POST', data: data,
-            headers: {'X-Requested-With': 'XMLHttpRequest'},
-            success: function(response) {
-                if (response.success) {
-                    messageDiv.html('<div class="alert alert-success py-2">' + response.message + '</div>');
-                    $('#current-status-text').text(response.new_status_name);
-                } else {
-                    messageDiv.html('<div class="alert alert-danger py-2">' + response.message + '</div>');
-                }
-            },
-            error: function() {
-                messageDiv.html('<div class="alert alert-danger py-2">Chyba komunikace.</div>');
             }
         });
     });

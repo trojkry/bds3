@@ -1,12 +1,16 @@
 {% extends "base.html" %}
 
-{% block title %}Upravit zákazníka{% endblock %}
+{% block title %}
+    {% if customer %}Upravit zákazníka{% else %}Nový zákazník{% endif %}
+{% endblock %}
 
 {% block content %}
 <div class="container">
     <a href="{{ url_for('customers.customers_list') }}" class="btn btn-secondary mb-3">Zpět na seznam</a>
 
-    <h2 class="mb-4">Upravit zákazníka (Full Page)</h2>
+    <h2 class="mb-4">
+        {% if customer %}Upravit zákazníka{% else %}Nový zákazník{% endif %}
+    </h2>
 
     <div class="card shadow">
         <div class="card-body">

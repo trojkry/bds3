@@ -5,10 +5,12 @@ from app.models import CustomerProfile, Order, OrderItem, Address, UserAccount, 
 from sqlalchemy.orm import joinedload
 from sqlalchemy import or_, cast, String
 from datetime import datetime
+from argon2 import PasswordHasher # Potřeba pro hashování hesla nového uživatele
 import logging
 
 customers_bp = Blueprint('customers', __name__)
 logger = logging.getLogger(__name__)
+ph = PasswordHasher()
 
 # --- SEZNAM ZÁKAZNÍKŮ ---
 @customers_bp.route('/customers')
@@ -30,7 +32,7 @@ def customers_list():
         ]
         query = query.filter(or_(*conditions))
 
-    order_column = CustomerProfile.customer_id # Default
+    order_column = CustomerProfile.customer_id
     
     if sort_by == 'first_name':
         order_column = CustomerProfile.first_name
@@ -56,11 +58,73 @@ def customers_list():
                            sort_by=sort_by,
                            sort_order=sort_order)
 
+# --- PŘIDAT ZÁKAZNÍKA ---
+@customers_bp.route('/customers/add', methods=['GET', 'POST'])
+@login_required
+def customer_add():
+    if request.method == 'POST':
+        try:
+            first_name = request.form.get('first_name')
+            last_name = request.form.get('last_name')
+            dob_str = request.form.get('date_of_birth')
+            email = request.form.get('email')
+            street = request.form.get('street')
+            city = request.form.get('city')
+            zip_code = request.form.get('zip_code')
+
+            if not first_name or not last_name or not email:
+                flash('Jméno, příjmení a email jsou povinná pole.', 'danger')
+            else:
+                if UserAccount.query.filter_by(email=email).first():
+                    flash(f'Uživatel s emailem {email} již existuje.', 'danger')
+                    return redirect(url_for('customers.customer_add'))
+
+                dob = datetime.strptime(dob_str, '%Y-%m-%d').date() if dob_str else None
+                
+                default_password_hash = ph.hash("12345")
+                new_user = UserAccount(email=email, password_hash=default_password_hash, is_active=True)
+                db.session.add(new_user)
+                db.session.flush() 
+
+                new_customer = CustomerProfile(
+                    user_id=new_user.user_id,
+                    first_name=first_name, 
+                    last_name=last_name, 
+                    date_of_birth=dob
+                )
+                db.session.add(new_customer)
+                db.session.flush() 
+
+                if street and city and zip_code:
+                    new_address = Address(
+                        customer_id=new_customer.customer_id,
+                        street=street,
+                        city=city,
+                        zip_code=zip_code,
+                        is_billing=True 
+                    )
+                    db.session.add(new_address)
+
+                db.session.commit()
+                
+                flash(f'Zákazník {first_name} {last_name} byl úspěšně vytvořen (Email: {email}).', 'success')
+                return redirect(url_for('customers.customers_list'))
+                
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f'Chyba při přidávání zákazníka: {e}')
+            flash(f'Chyba při ukládání: {str(e)}', 'danger')
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render_template('customers/form_fragment.html', customer=None)
+
+    return render_template('customers/form.html', customer=None)
+
 # --- EDITACE ZÁKAZNÍKA ---
 @customers_bp.route('/customers/edit/<int:customer_id>', methods=['GET', 'POST'])
 @login_required
 def customer_edit(customer_id):
-    customer = CustomerProfile.query.get_or_404(customer_id)
+    customer = CustomerProfile.query.options(joinedload(CustomerProfile.user), joinedload(CustomerProfile.addresses)).get_or_404(customer_id)
     
     if request.method == 'POST':
         try:
@@ -68,14 +132,35 @@ def customer_edit(customer_id):
             customer.last_name = request.form.get('last_name')
             
             dob = request.form.get('date_of_birth')
-            if dob:
-                customer.date_of_birth = datetime.strptime(dob, '%Y-%m-%d').date()
-            else:
-                customer.date_of_birth = None
+            customer.date_of_birth = datetime.strptime(dob, '%Y-%m-%d').date() if dob else None
             
+            # Update Emailu
+            email = request.form.get('email')
+            if customer.user and email:
+                if customer.user.email != email:
+                    existing = UserAccount.query.filter_by(email=email).first()
+                    if existing and existing.user_id != customer.user_id:
+                        flash('Tento email je již obsazen jiným uživatelem.', 'warning')
+                    else:
+                        customer.user.email = email
+            
+            # Update Adresy
+            street = request.form.get('street')
+            city = request.form.get('city')
+            zip_code = request.form.get('zip_code')
+
+            if street or city or zip_code:
+                if customer.addresses:
+                    addr = customer.addresses[0]
+                    addr.street = street
+                    addr.city = city
+                    addr.zip_code = zip_code
+                else:
+                    new_addr = Address(customer_id=customer.customer_id, street=street, city=city, zip_code=zip_code, is_billing=True)
+                    db.session.add(new_addr)
+
             db.session.commit()
             flash(f'Zákazník {customer.first_name} {customer.last_name} byl úspěšně upraven.', 'success')
-            
             return redirect(url_for('customers.customers_list'))
             
         except Exception as e:
@@ -118,9 +203,7 @@ def customer_delete(customer_id):
         orders = Order.query.filter_by(customer_id=customer_id).all()
         for order in orders:
             OrderItem.query.filter_by(order_id=order.order_id).delete()
-            
             PaymentTransaction.query.filter_by(order_id=order.order_id).delete()
-            
             db.session.delete(order)
 
         db.session.delete(customer)
