@@ -95,25 +95,38 @@ def category_edit(category_id):
     return render_template('categories/form.html', category=category, all_categories=all_categories)
 
 # --- SMAZAT KATEGORII ---
+def delete_category_recursively(category):
+
+    subcategories = Category.query.filter_by(parent_id=category.category_id).all()
+    for sub in subcategories:
+        delete_category_recursively(sub)
+
+    products = Product.query.filter_by(category_id=category.category_id).all()
+    for product in products:
+        db.session.delete(product)
+
+    db.session.delete(category)
+
+
+# --- SMAZAT KATEGORII ---
 @categories_bp.route('/categories/delete/<int:category_id>', methods=['POST'])
 @login_required
 def category_delete(category_id):
     category = Category.query.get_or_404(category_id)
     
-    products_count = Product.query.filter_by(category_id=category_id).count()
-    subcategories_count = Category.query.filter_by(parent_id=category_id).count()
-    
-    if products_count > 0:
-        flash(f'Nelze smazat: Kategorie obsahuje {products_count} produktů.', 'danger')
-    elif subcategories_count > 0:
-        flash(f'Nelze smazat: Kategorie má {subcategories_count} podkategorií.', 'danger')
-    else:
-        try:
-            db.session.delete(category)
-            db.session.commit()
-            flash('Kategorie smazána.', 'success')
-        except Exception as e:
-            db.session.rollback()
-            flash('Chyba databáze při mazání.', 'danger')
+    try:
+        delete_category_recursively(category)
+        
+        db.session.commit()
+        flash('Kategorie byla úspěšně smazána včetně všech produktů a podkategorií.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Chyba databáze při mazání kategorie {category_id}: {e}')
+        
+        if "foreign key constraint" in str(e).lower() or "IntegrityError" in str(e):
+             flash('Nelze smazat: Některé produkty z této kategorie jsou již součástí objednávek. Nejprve musíte smazat související objednávky.', 'danger')
+        else:
+            flash(f'Chyba při mazání: {e}', 'danger')
             
     return redirect(url_for('categories.categories_list'))
